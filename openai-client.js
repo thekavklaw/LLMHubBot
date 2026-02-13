@@ -5,7 +5,7 @@
  */
 
 const OpenAI = require('openai');
-const { searchWeb } = require('./tools/webSearch');
+// Legacy searchWeb removed — use brave_search from tool registry if needed
 const logger = require('./logger');
 const { withRetry } = require('./utils/retry');
 const { CircuitBreaker } = require('./utils/circuit-breaker');
@@ -64,8 +64,17 @@ async function generateResponse(messages, config = {}) {
           let args;
           try { args = JSON.parse(toolCall.function.arguments); } catch { args = { query: '' }; }
           logger.info('OpenAI', `Tool call: search_web("${args.query}")`);
-          const results = await searchWeb(args.query);
-          const resultText = results.map(r => `**${r.title}**\n${r.url}\n${r.snippet}`).join('\n\n');
+          // Use brave_search from singleton registry
+          const ToolRegistry = require('./tools/registry');
+          const registry = ToolRegistry.getInstance();
+          const braveTool = registry && registry.getTool('brave_search');
+          let resultText = 'Search unavailable';
+          if (braveTool) {
+            try {
+              const results = await braveTool.execute({ query: args.query }, {});
+              resultText = typeof results === 'string' ? results : JSON.stringify(results);
+            } catch (e) { resultText = `Search error: ${e.message}`; }
+          }
           messages.push({
             role: 'tool',
             tool_call_id: toolCall.id,

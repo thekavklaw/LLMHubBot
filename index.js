@@ -124,6 +124,7 @@ async function sendStartupEmbed() {
 // ── Initialize Tool Registry, Agent Loop & Thinking Orchestrator ──
 const registry = new ToolRegistry();
 registry.loadAll();
+ToolRegistry.setInstance(registry);
 
 if (config.enableAgentLoop) {
   const agentLoop = new AgentLoop(registry, openaiClient, config);

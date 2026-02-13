@@ -381,7 +381,7 @@ async function test(name, fn) {
 
   // ──────────── FILE CHECKS ────────────
   const expectedFiles = ['index.js', 'db.js', 'context.js', 'soul.js', 'users.js', 'moderator.js',
-    'memory.js', 'openai-client.js', 'relevance.js', 'threads.js', 'config.js', 'logger.js', 'queue.js'];
+    'memory.js', 'openai-client.js', 'threads.js', 'config.js', 'logger.js', 'queue.js'];
 
   await test('all source files exist and have content', () => {
     for (const f of expectedFiles) {

@@ -97,4 +97,9 @@ class ToolRegistry {
   }
 }
 
+// Singleton instance — set by index.js, used by interaction handler etc.
+let _instance = null;
+ToolRegistry.setInstance = (inst) => { _instance = inst; };
+ToolRegistry.getInstance = () => _instance;
+
 module.exports = ToolRegistry;

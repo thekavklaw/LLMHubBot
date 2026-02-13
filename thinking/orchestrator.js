@@ -158,9 +158,13 @@ class ThinkingOrchestrator {
     const reflCount = (this._reflectionCounters.get(channelId) || 0) + 1;
     this._reflectionCounters.set(channelId, reflCount);
 
+    const hasToolUsage = result && result.toolsUsed && result.toolsUsed.length > 0;
+    const msgContent = typeof message.content === 'string' ? message.content : '';
+    const isNegativeFeedback = /👎|:-1|thumbsdown/i.test(msgContent);
     const shouldReflect = (intent && intent.intent === 'correction') ||
-                          reflCount % 3 === 0 ||
-                          (loadLevel <= 1);
+                          isNegativeFeedback ||
+                          hasToolUsage ||
+                          reflCount % 5 === 0;
 
     if (shouldReflect) {
       setImmediate(() => {

@@ -53,9 +53,10 @@ function getSoulConfig() {
   };
 }
 
-async function reflectAndUpdate() {
+async function reflectAndUpdate(threadChannelId) {
   try {
-    const channelId = config.gptChannelId;
+    // Reflect on the provided channel (thread or main), falling back to gptChannelId
+    const channelId = threadChannelId || config.gptChannelId;
     const recentMsgs = getRecentMessages(channelId, 50);
     if (recentMsgs.length < 10) return;
 
@@ -89,7 +90,10 @@ Write ONLY the content that goes under "## What I've Learned" — no heading, ju
       /## What I've Learned\n[\s\S]*/,
       `## What I've Learned\n${newLearned}\n`
     );
-    fs.writeFileSync(SOUL_PATH, updatedSoul, 'utf-8');
+    // Atomic write: write to temp file, then rename to prevent corruption
+    const tmpPath = SOUL_PATH + '.tmp.' + process.pid;
+    fs.writeFileSync(tmpPath, updatedSoul, 'utf-8');
+    fs.renameSync(tmpPath, SOUL_PATH);
     logger.info('Soul', `Reflection updated: ${newLearned.slice(0, 80)}...`);
   } catch (err) {
     logger.error('Soul', 'Reflection error:', err);

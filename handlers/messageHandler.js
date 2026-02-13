@@ -15,13 +15,11 @@ function setAgentLoop(loop) { _agentLoop = loop; }
 function setOrchestrator(orch) { _orchestrator = orch; }
 const { addMessage, getContext, getRecentContextMessages, withChannelLock, updateMessage, deleteMessage } = require('../context');
 const { logMessage, getState, setState } = require('../db');
-const { shouldRespond } = require('../relevance');
-const { think } = require('../thinking');
+// Legacy imports removed (thinking.js, relevance.js, webSearch.js) — 5-layer system is canonical
 const { storeMemory, extractFacts, searchMemory } = require('../memory');
 const { trackUser, updateProfilesFromFacts, getProfile } = require('../users');
 const { checkMessage, checkOutput } = require('../moderator');
 const { checkRateLimit } = require('../ratelimiter');
-const { searchWeb } = require('../tools/webSearch');
 const config = require('../config');
 const logger = require('../logger');
 const { ModelQueue } = require('../utils/model-queue');
@@ -368,48 +366,10 @@ async function processMessage(message, content, mergedAttachments) {
         throw err;
       }
     } else {
-      // ── Legacy: Thinking Layer or Relevance Fallback ──
-      let decision;
-      const recentMessages = getRecentContextMessages(channelId);
-
-      if (config.enableThinking) {
-        let userProfile = null;
-        try { userProfile = getProfile(userId); } catch (_) {}
-
-        let relevantMemories = [];
-        try { relevantMemories = await searchMemory(content, 5, 0.6, message.guild?.id); } catch (_) {}
-
-        decision = await think(recentMessages, userProfile, relevantMemories, inThread, botId);
-
-        if (decision.action === 'ignore') {
-          logger.debug('Thinking', `Ignoring message from ${userName}: ${decision.reasoning}`);
-          return;
-        }
-      } else {
-        if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
-          try {
-            const relevanceDecision = await shouldRespond(message, recentMessages, botId);
-            if (!relevanceDecision.respond) return;
-          } catch (err) {
-            logger.error('Relevance', 'Error:', err);
-          }
-        }
-        decision = { action: 'respond', tone: 'helpful', confidence: 0.5, image_prompt: null, search_query: null };
-      }
-
+      // ── Legacy fallback: simple text response (5-layer system should always be active) ──
+      logger.warn('MessageHandler', 'Orchestrator not available — using basic text response fallback');
       const soulConfig = getSoulConfig();
-
-      if (_agentLoop && config.enableAgentLoop) {
-        await handleAgentResponse(message, channelId, userId, userName, soulConfig, priority);
-      } else if (decision.action === 'search_and_respond') {
-        await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig, priority);
-      } else if (decision.action === 'generate_image') {
-        await handleGenerateImage(message, channelId, userId, userName, decision, priority);
-      } else if (decision.action === 'respond_with_image') {
-        await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig, priority);
-      } else {
-        await handleTextResponse(message, channelId, userId, userName, soulConfig, priority);
-      }
+      await handleTextResponse(message, channelId, userId, userName, soulConfig, priority);
     }
 
   } catch (err) {
@@ -497,227 +457,8 @@ async function handleTextResponse(message, channelId, userId, userName, soulConf
   }
 }
 
-/**
- * Search the web, then respond with search results as context.
- */
-async function handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig, priority = 0) {
-  const stopTyping = startTyping(message.channel);
-
-  let searchResults = '';
-  try {
-    const results = await searchWeb(decision.search_query);
-    searchResults = results.map(r => `**${r.title}**\n${r.url}\n${r.snippet}`).join('\n\n');
-    logger.info('Thinking', `Web search: "${decision.search_query}" → ${results.length} results`);
-  } catch (err) {
-    logger.error('Thinking', 'Web search failed:', err.message);
-  }
-
-  try {
-    const response = await modelQueue.enqueue(config.model, async () => {
-      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-      const contextMessages = [
-        { role: 'system', content: systemPrompt },
-        ...getContext(channelId),
-      ];
-      if (searchResults) {
-        contextMessages.push({
-          role: 'system',
-          content: `Web search results for "${decision.search_query}":\n\n${searchResults}\n\nUse these results to inform your response. Cite sources when relevant.`,
-        });
-      }
-      return Promise.race([
-        generateResponse(contextMessages, { ...soulConfig, tools: false }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
-      ]);
-    }, priority);
-
-    stopTyping();
-
-    const outMod = await checkOutput(response, channelId);
-    if (!outMod.safe) {
-      await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
-      return;
-    }
-
-    await addMessage(channelId, 'assistant', response);
-    logMessage(channelId, null, 'LLMHub', 'assistant', response);
-
-    for (const part of splitMessage(response)) {
-      await message.channel.send(part);
-    }
-  } catch (err) {
-    stopTyping();
-    throw err;
-  }
-}
-
-/**
- * Generate an image only (no text response).
- */
-async function handleGenerateImage(message, channelId, userId, userName, decision, priority = 0) {
-  if (!canGenerateImage(userId)) {
-    await message.channel.send({ embeds: [errorEmbed("You've hit the image generation limit. Try again later.")] }).catch(() => {});
-    return;
-  }
-
-  const stopTyping = startTyping(message.channel);
-
-  try {
-    const imageBuffer = await modelQueue.enqueue('gpt-image-1', () => generateImage(decision.image_prompt), priority);
-    stopTyping();
-    recordImageGeneration(userId);
-
-    const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.png' });
-    await message.channel.send({ files: [attachment] });
-
-    await addMessage(channelId, 'assistant', `[Generated image: ${decision.image_prompt}]`);
-    logMessage(channelId, null, 'LLMHub', 'assistant', `[Image: ${decision.image_prompt}]`);
-
-    storeMemory(`User ${userName} requested a visual/image about: ${decision.image_prompt}`, {
-      userId, userName, channelId, category: 'preference',
-    }).catch(() => {});
-  } catch (err) {
-    stopTyping();
-    logger.error('ImageGen', 'Error:', err.message);
-    await message.channel.send({ embeds: [errorEmbed("Failed to generate the image. Try again.")] }).catch(() => {});
-  }
-}
-
-/**
- * Generate both a text response and an image.
- */
-async function handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig, priority = 0) {
-  if (!canGenerateImage(userId)) {
-    await handleTextResponse(message, channelId, userId, userName, soulConfig, priority);
-    return;
-  }
-
-  const stopTyping = startTyping(message.channel);
-
-  try {
-    const [response, imageResult] = await Promise.allSettled([
-      modelQueue.enqueue(config.model, async () => {
-        const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...getContext(channelId),
-        ];
-        return Promise.race([
-          generateResponse(messages, soulConfig),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
-        ]);
-      }, priority),
-      modelQueue.enqueue('gpt-image-1', () => generateImage(decision.image_prompt), priority),
-    ]);
-
-    stopTyping();
-
-    let textSent = false;
-    if (response.status === 'fulfilled' && response.value) {
-      const outMod = await checkOutput(response.value, channelId);
-      if (outMod.safe) {
-        await addMessage(channelId, 'assistant', response.value);
-        logMessage(channelId, null, 'LLMHub', 'assistant', response.value);
-
-        if (imageResult.status === 'fulfilled') {
-          const parts = splitMessage(response.value);
-          for (let i = 0; i < parts.length - 1; i++) {
-            await message.channel.send(parts[i]);
-          }
-          recordImageGeneration(userId);
-          const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
-          await message.channel.send({ content: parts[parts.length - 1], files: [attachment] });
-          textSent = true;
-        } else {
-          for (const part of splitMessage(response.value)) {
-            await message.channel.send(part);
-          }
-          textSent = true;
-        }
-      }
-    }
-
-    if (!textSent && imageResult.status === 'fulfilled') {
-      recordImageGeneration(userId);
-      const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
-      await message.channel.send({ files: [attachment] });
-    }
-
-    if (response.status === 'rejected' && imageResult.status === 'rejected') {
-      throw response.reason || new Error('Both text and image generation failed');
-    }
-
-    storeMemory(`User ${userName} appreciated a visual response about: ${decision.image_prompt}`, {
-      userId, userName, channelId, category: 'preference',
-    }).catch(() => {});
-  } catch (err) {
-    stopTyping();
-    throw err;
-  }
-}
-
-/**
- * Agent loop response — GPT decides when to use tools.
- */
-async function handleAgentResponse(message, channelId, userId, userName, soulConfig, priority = 0) {
-  const stopTyping = startTyping(message.channel);
-
-  try {
-    const result = await modelQueue.enqueue(config.model, async () => {
-      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-      const contextMessages = getContext(channelId);
-      const context = { userId, userName, channelId, guildId, generatedImages: [], registry: _agentLoop?.registry };
-
-      return Promise.race([
-        _agentLoop.run(contextMessages, systemPrompt, context),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.agentLoopTimeout || 60000)),
-      ]);
-    }, priority);
-
-    stopTyping();
-
-    if (result.toolsUsed.length > 0) {
-      logger.info('AgentLoop', `Used ${result.toolsUsed.length} tools in ${result.iterations} iterations`);
-    }
-
-    if (!result.text && result.images.length === 0) return;
-
-    const outMod = await checkOutput(result.text || '', channelId);
-    if (!outMod.safe) {
-      await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
-      return;
-    }
-
-    await addMessage(channelId, 'assistant', result.text || '[image]');
-    logMessage(channelId, null, 'LLMHub', 'assistant', result.text || '[image]');
-
-    const files = [];
-    for (let i = 0; i < result.images.length; i++) {
-      const img = result.images[i];
-      if (img.image_buffer) {
-        const buf = Buffer.from(img.image_buffer, 'base64');
-        files.push(new AttachmentBuilder(buf, { name: `generated_${i + 1}.png` }));
-        recordImageGeneration(userId);
-      }
-    }
-
-    if (result.text) {
-      const parts = splitMessage(result.text);
-      for (let i = 0; i < parts.length - 1; i++) {
-        await message.channel.send(parts[i]);
-      }
-      await message.channel.send({
-        content: parts[parts.length - 1],
-        files: files.length > 0 ? files : undefined,
-      });
-    } else if (files.length > 0) {
-      await message.channel.send({ files });
-    }
-  } catch (err) {
-    stopTyping();
-    throw err;
-  }
-}
+// Legacy handlers (handleSearchAndRespond, handleGenerateImage, handleRespondWithImage,
+// handleAgentResponse) removed — all routing now goes through the 5-layer orchestrator.
 
 module.exports = {
   handleMessage,

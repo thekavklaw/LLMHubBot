@@ -8109,3 +8109,823 @@ You testing if I’m a bot again, or do you actually need" (104 chars)
 [2026-02-13 10:05:21] [INFO] [Bot] Slash commands registered
 [2026-02-13 10:05:21] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 10:05:21] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:31:21] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:31:21] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:31:21] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 10:31:21] [INFO] [Health] Health server listening on http://127.0.0.1:3870/health
+[2026-02-13 10:31:21] [INFO] [Bot] Slash commands registered
+[2026-02-13 10:31:21] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 10:31:21] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:33:26] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:33:26] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:33:26] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 10:33:26] [INFO] [Health] Health server listening on http://127.0.0.1:3870/health
+[2026-02-13 10:33:27] [INFO] [Bot] Slash commands registered
+[2026-02-13 10:33:27] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 10:33:27] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 10:34:19] [INFO] [RateLimit] User rl-block-1770978859631 hit limit in rl-blkch-1770978859631, cooldown 60s
+[2026-02-13 10:34:19] [INFO] [RateLimit] User rl-thread-1770978859632 hit limit in rl-thrch-1770978859632, cooldown 60s
+[2026-02-13 10:34:19] [INFO] [QA] test log entry
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:20] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:ajdizn {"status":429,"message":"Rate limited"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:9cxqxk {"message":"TIMEOUT"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:43yqi1 {"code":"ETIMEDOUT","message":"connect"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:s3scvl {"message":"Request timed out"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:gp1spf {"status":500,"message":"Internal"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:vmrg0w {"status":503,"message":"Unavailable"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:ly1puc {"message":"QUEUE_FULL"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:ali5hy {"message":"Content flagged by moderation"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:i1064x {"message":"Something weird"}
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:uvbx9z Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:737:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:736:9
+[2026-02-13 10:34:20] [ERROR] [ErrorRef] ref:oom93x Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:742:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:741:9
+[2026-02-13 10:34:20] [INFO] [Context] Cleared context for channel test-reset-channel-123
+[2026-02-13 10:34:20] [INFO] [Context] Cleared context for channel test-ctx-add-123
+[2026-02-13 10:34:20] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:34:20] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:34:20] [INFO] [Health] Health server listening on http://127.0.0.1:39508/health
+[2026-02-13 10:34:20] [INFO] [Health] Health server listening on http://127.0.0.1:39580/health
+[2026-02-13 10:34:20] [WARN] [[Retry] test attempt 1/3 failed, retrying in 11ms] [object Object]
+[2026-02-13 10:34:20] [WARN] [[Retry] test attempt 2/3 failed, retrying in 23ms] [object Object]
+[2026-02-13 10:34:20] [WARN] [[Retry] test attempt 1/2 failed, retrying in 2096ms] [object Object]
+[2026-02-13 10:34:23] [WARN] [[Retry] test attempt 2/2 failed, retrying in 5101ms] [object Object]
+[2026-02-13 10:34:23] [INFO] [Context] Cleared context for channel test-edit-ch-123
+[2026-02-13 10:34:23] [INFO] [Context] Updated message msg-edit-1 in channel test-edit-ch-123
+[2026-02-13 10:34:23] [INFO] [Context] Cleared context for channel test-del-ch-123
+[2026-02-13 10:34:23] [INFO] [Context] Deleted message msg-del-1 from channel test-del-ch-123
+[2026-02-13 10:34:23] [ERROR] [ErrorRef] ref:fkse7k Error: something
+    at /opt/llmhub-bot/tests/test.js:1482:31
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1480:9
+[2026-02-13 10:34:23] [ERROR] [ErrorRef] ref:z7pwvn Error: a
+    at /opt/llmhub-bot/tests/test.js:1488:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:34:23] [ERROR] [ErrorRef] ref:3q4sz7 Error: b
+    at /opt/llmhub-bot/tests/test.js:1489:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:34:23] [ERROR] [ErrorRef] ref:nia58v {"message":"moderation flagged"}
+[2026-02-13 10:34:27] [INFO] [RateLimit] User rl-block-1770978867627 hit limit in rl-blkch-1770978867627, cooldown 60s
+[2026-02-13 10:34:27] [INFO] [RateLimit] User rl-thread-1770978867628 hit limit in rl-thrch-1770978867628, cooldown 60s
+[2026-02-13 10:34:27] [INFO] [QA] test log entry
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:34:28] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:yklfp5 {"status":429,"message":"Rate limited"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:pbk2mo {"message":"TIMEOUT"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:hjzd8f {"code":"ETIMEDOUT","message":"connect"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:4et8wq {"message":"Request timed out"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:zb170v {"status":500,"message":"Internal"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:bfdpo2 {"status":503,"message":"Unavailable"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:45xb3d {"message":"QUEUE_FULL"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:cy3oq7 {"message":"Content flagged by moderation"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:ehj05u {"message":"Something weird"}
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:tp0ozw Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:737:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:736:9
+[2026-02-13 10:34:28] [ERROR] [ErrorRef] ref:osoogt Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:742:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:741:9
+[2026-02-13 10:34:28] [INFO] [Context] Cleared context for channel test-reset-channel-123
+[2026-02-13 10:34:28] [INFO] [Context] Cleared context for channel test-ctx-add-123
+[2026-02-13 10:34:28] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:34:28] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:34:28] [INFO] [Health] Health server listening on http://127.0.0.1:38860/health
+[2026-02-13 10:34:28] [INFO] [Health] Health server listening on http://127.0.0.1:39391/health
+[2026-02-13 10:34:28] [WARN] [[Retry] test attempt 1/3 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:34:28] [WARN] [[Retry] test attempt 2/3 failed, retrying in 22ms] [object Object]
+[2026-02-13 10:34:28] [WARN] [[Retry] test attempt 1/2 failed, retrying in 2047ms] [object Object]
+[2026-02-13 10:34:31] [WARN] [[Retry] test attempt 2/2 failed, retrying in 4841ms] [object Object]
+[2026-02-13 10:34:31] [INFO] [Context] Cleared context for channel test-edit-ch-123
+[2026-02-13 10:34:31] [INFO] [Context] Updated message msg-edit-1 in channel test-edit-ch-123
+[2026-02-13 10:34:31] [INFO] [Context] Cleared context for channel test-del-ch-123
+[2026-02-13 10:34:31] [INFO] [Context] Deleted message msg-del-1 from channel test-del-ch-123
+[2026-02-13 10:34:31] [ERROR] [ErrorRef] ref:8eryxe Error: something
+    at /opt/llmhub-bot/tests/test.js:1482:31
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1480:9
+[2026-02-13 10:34:31] [ERROR] [ErrorRef] ref:z31f9l Error: a
+    at /opt/llmhub-bot/tests/test.js:1488:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:34:31] [ERROR] [ErrorRef] ref:tycrvp Error: b
+    at /opt/llmhub-bot/tests/test.js:1489:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:34:31] [ERROR] [ErrorRef] ref:aya03g {"message":"moderation flagged"}
+[2026-02-13 10:35:13] [INFO] [RateLimit] User rl-block-1770978913098 hit limit in rl-blkch-1770978913098, cooldown 60s
+[2026-02-13 10:35:13] [INFO] [RateLimit] User rl-thread-1770978913099 hit limit in rl-thrch-1770978913099, cooldown 60s
+[2026-02-13 10:35:13] [INFO] [QA] test log entry
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:13] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:lv42kl {"status":429,"message":"Rate limited"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:mywu8m {"message":"TIMEOUT"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:4j65bv {"code":"ETIMEDOUT","message":"connect"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:0u778z {"message":"Request timed out"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:ks67d7 {"status":500,"message":"Internal"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:yueson {"status":503,"message":"Unavailable"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:i7luaq {"message":"QUEUE_FULL"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:h5wjm8 {"message":"Content flagged by moderation"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:btcywc {"message":"Something weird"}
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:h63f5h Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:737:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:736:9
+[2026-02-13 10:35:13] [ERROR] [ErrorRef] ref:tcf6su Error: unknown
+    at friendlyError (/opt/llmhub-bot/utils/errors.js:75:51)
+    at /opt/llmhub-bot/tests/test.js:742:17
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:741:9
+[2026-02-13 10:35:13] [INFO] [Context] Cleared context for channel test-reset-channel-123
+[2026-02-13 10:35:13] [INFO] [Context] Cleared context for channel test-ctx-add-123
+[2026-02-13 10:35:13] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:35:13] [INFO] [Context] Cleared context for channel test-ctx-persist-123
+[2026-02-13 10:35:14] [INFO] [Health] Health server listening on http://127.0.0.1:39067/health
+[2026-02-13 10:35:14] [INFO] [Health] Health server listening on http://127.0.0.1:38940/health
+[2026-02-13 10:35:14] [WARN] [[Retry] test attempt 1/3 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:35:14] [WARN] [[Retry] test attempt 2/3 failed, retrying in 25ms] [object Object]
+[2026-02-13 10:35:14] [WARN] [[Retry] test attempt 1/2 failed, retrying in 2340ms] [object Object]
+[2026-02-13 10:35:16] [WARN] [[Retry] test attempt 2/2 failed, retrying in 5097ms] [object Object]
+[2026-02-13 10:35:16] [INFO] [Context] Cleared context for channel test-edit-ch-123
+[2026-02-13 10:35:16] [INFO] [Context] Updated message msg-edit-1 in channel test-edit-ch-123
+[2026-02-13 10:35:16] [INFO] [Context] Cleared context for channel test-del-ch-123
+[2026-02-13 10:35:16] [INFO] [Context] Deleted message msg-del-1 from channel test-del-ch-123
+[2026-02-13 10:35:17] [ERROR] [ErrorRef] ref:pxmfen Error: something
+    at /opt/llmhub-bot/tests/test.js:1482:31
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1480:9
+[2026-02-13 10:35:17] [ERROR] [ErrorRef] ref:off1bd Error: a
+    at /opt/llmhub-bot/tests/test.js:1488:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:35:17] [ERROR] [ErrorRef] ref:pljern Error: b
+    at /opt/llmhub-bot/tests/test.js:1489:32
+    at test (/opt/llmhub-bot/tests/test.js:10:11)
+    at /opt/llmhub-bot/tests/test.js:1486:9
+[2026-02-13 10:35:17] [ERROR] [ErrorRef] ref:is1g8i {"message":"moderation flagged"}
+[2026-02-13 10:35:20] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:20] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:20] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:20] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: error_tool
+[2026-02-13 10:35:21] [ERROR] [ToolRegistry] Tool error_tool completed in 0ms, success=false: {"error":"Intentional failure","stack":"Error: Intentional failure\n    at Object.execute (/opt/llmhub-bot/tests/test-agentic.js:68:36)\n    at ToolRegistry.executeTool (/opt/llmhub-bot/tools/registry.js:77:14)\n    at /opt/llmhub-bot/tests/test-agentic.js:70:30\n    at test (/opt/llmhub-bot/tests/test-agentic.js:9:11)\n    at /opt/llmhub-bot/tests/test-agentic.js:62:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: slow_tool
+[2026-02-13 10:35:21] [ERROR] [ToolRegistry] Tool slow_tool completed in 100ms, success=false: {"error":"Tool execution timed out","stack":"Error: Tool execution timed out\n    at Timeout._onTimeout (/opt/llmhub-bot/tools/registry.js:78:60)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)"}
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:21] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Agent loop started with 0 tools available
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 1/3: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: test({"n":1})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: test → success in 0ms
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 2/3: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #2: test({"n":2})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #2: test → success in 0ms
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 3/3: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #3: test({"n":3})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #3: test → success in 0ms
+[2026-02-13 10:35:21] [WARN] [AgentLoop] Max iterations (3) reached, forcing text response
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: dup({"x":1})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: dup → success in 0ms
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 2/5: 1 tool calls
+[2026-02-13 10:35:21] [WARN] [AgentLoop] Skipped duplicate call: dup
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: fail({})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: fail → fail in 0ms
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: generate_image({})
+[2026-02-13 10:35:21] [INFO] [AgentLoop] Tool call #1: generate_image → success in 0ms
+[2026-02-13 10:35:21] [INFO] [Gate] Heuristic match: "bot mentioned" for TestUser
+[2026-02-13 10:35:21] [INFO] [Gate] Heuristic match: "thread message" for TestUser
+[2026-02-13 10:35:21] [INFO] [Gate] Heuristic match: "reply to bot" for TestUser
+[2026-02-13 10:35:21] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 10:35:21] [INFO] [Synthesize] Output: 1 message(s), total 6 chars, 0 image(s)
+[2026-02-13 10:35:21] [INFO] [Synthesize] Empty result — nothing to send
+[2026-02-13 10:35:22] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:35:22] [INFO] [Orchestrator] Processing message from Tester in ch1: "What is the answer to everything?"
+[2026-02-13 10:35:22] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:35:22] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 10:35:23] [INFO] [Intent] Heuristic intent="definition", tone="educational", emotion="curious", memories=0, profile=none
+[2026-02-13 10:35:23] [INFO] [Orchestrator] Layer 2 (Intent): intent=definition, tone=educational, tools=[define_word], time=352ms
+[2026-02-13 10:35:23] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 10:35:23] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2ms
+[2026-02-13 10:35:23] [INFO] [Synthesize] Output: 1 message(s), total 17 chars, 0 image(s)
+[2026-02-13 10:35:23] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=1ms
+[2026-02-13 10:35:23] [WARN] [[Retry] test attempt 1/3 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:35:23] [WARN] [[Retry] test attempt 2/3 failed, retrying in 24ms] [object Object]
+[2026-02-13 10:35:23] [WARN] [[Retry] test attempt 1/2 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:35:23] [WARN] [[Retry] test attempt 2/2 failed, retrying in 24ms] [object Object]
+[2026-02-13 10:35:23] [WARN] [[Retry] test attempt 1/3 failed, retrying in 2294ms] [object Object]
+[2026-02-13 10:35:25] [WARN] [[Retry] test attempt 1/3 failed, retrying in 11ms] [object Object]
+[2026-02-13 10:35:25] [INFO] [Synthesize] Output: 1 message(s), total 19 chars, 1 image(s)
+[2026-02-13 10:35:25] [INFO] [Synthesize] Output: 1 message(s), total 14 chars, 0 image(s)
+[2026-02-13 10:35:25] [INFO] [Synthesize] Output: 1 message(s), total 10 chars, 0 image(s)
+[2026-02-13 10:35:25] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:35:25] [INFO] [Orchestrator] Processing message from Tester in ch1: "test message for fallback"
+[2026-02-13 10:35:25] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:35:25] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: error_tool
+[2026-02-13 10:35:44] [ERROR] [ToolRegistry] Tool error_tool completed in 0ms, success=false: {"error":"Intentional failure","stack":"Error: Intentional failure\n    at Object.execute (/opt/llmhub-bot/tests/test-agentic.js:68:36)\n    at ToolRegistry.executeTool (/opt/llmhub-bot/tools/registry.js:77:14)\n    at /opt/llmhub-bot/tests/test-agentic.js:70:30\n    at test (/opt/llmhub-bot/tests/test-agentic.js:9:11)\n    at /opt/llmhub-bot/tests/test-agentic.js:62:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: slow_tool
+[2026-02-13 10:35:44] [ERROR] [ToolRegistry] Tool slow_tool completed in 100ms, success=false: {"error":"Tool execution timed out","stack":"Error: Tool execution timed out\n    at Timeout._onTimeout (/opt/llmhub-bot/tools/registry.js:78:60)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)"}
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:35:44] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Agent loop started with 0 tools available
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 1/3: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: test({"n":1})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: test → success in 0ms
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 2/3: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #2: test({"n":2})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #2: test → success in 0ms
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 3/3: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #3: test({"n":3})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #3: test → success in 0ms
+[2026-02-13 10:35:44] [WARN] [AgentLoop] Max iterations (3) reached, forcing text response
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: dup({"x":1})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: dup → success in 0ms
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 2/5: 1 tool calls
+[2026-02-13 10:35:44] [WARN] [AgentLoop] Skipped duplicate call: dup
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: fail({})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: fail → fail in 0ms
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: generate_image({})
+[2026-02-13 10:35:44] [INFO] [AgentLoop] Tool call #1: generate_image → success in 0ms
+[2026-02-13 10:35:44] [INFO] [Gate] Heuristic match: "bot mentioned" for TestUser
+[2026-02-13 10:35:44] [INFO] [Gate] Heuristic match: "thread message" for TestUser
+[2026-02-13 10:35:44] [INFO] [Gate] Heuristic match: "reply to bot" for TestUser
+[2026-02-13 10:35:44] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 10:35:44] [INFO] [Synthesize] Output: 1 message(s), total 6 chars, 0 image(s)
+[2026-02-13 10:35:44] [INFO] [Synthesize] Empty result — nothing to send
+[2026-02-13 10:35:45] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:35:45] [INFO] [Orchestrator] Processing message from Tester in ch1: "What is the answer to everything?"
+[2026-02-13 10:35:45] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:35:45] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 10:35:45] [INFO] [Intent] Heuristic intent="definition", tone="educational", emotion="curious", memories=0, profile=none
+[2026-02-13 10:35:45] [INFO] [Orchestrator] Layer 2 (Intent): intent=definition, tone=educational, tools=[define_word], time=172ms
+[2026-02-13 10:35:45] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 10:35:45] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=1ms
+[2026-02-13 10:35:45] [INFO] [Synthesize] Output: 1 message(s), total 17 chars, 0 image(s)
+[2026-02-13 10:35:45] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 10:35:45] [WARN] [[Retry] test attempt 1/3 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:35:45] [WARN] [[Retry] test attempt 2/3 failed, retrying in 22ms] [object Object]
+[2026-02-13 10:35:45] [WARN] [[Retry] test attempt 1/2 failed, retrying in 12ms] [object Object]
+[2026-02-13 10:35:45] [WARN] [[Retry] test attempt 2/2 failed, retrying in 24ms] [object Object]
+[2026-02-13 10:35:45] [WARN] [[Retry] test attempt 1/3 failed, retrying in 2035ms] [object Object]
+[2026-02-13 10:35:47] [WARN] [[Retry] test attempt 1/3 failed, retrying in 11ms] [object Object]
+[2026-02-13 10:35:47] [INFO] [Synthesize] Output: 1 message(s), total 19 chars, 1 image(s)
+[2026-02-13 10:35:47] [INFO] [Synthesize] Output: 1 message(s), total 14 chars, 0 image(s)
+[2026-02-13 10:35:47] [INFO] [Synthesize] Output: 1 message(s), total 10 chars, 0 image(s)
+[2026-02-13 10:35:47] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:35:47] [INFO] [Orchestrator] Processing message from Tester in ch1: "test message for fallback"
+[2026-02-13 10:35:47] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:35:47] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: error_tool
+[2026-02-13 10:36:05] [ERROR] [ToolRegistry] Tool error_tool completed in 0ms, success=false: {"error":"Intentional failure","stack":"Error: Intentional failure\n    at Object.execute (/opt/llmhub-bot/tests/test-agentic.js:68:36)\n    at ToolRegistry.executeTool (/opt/llmhub-bot/tools/registry.js:77:14)\n    at /opt/llmhub-bot/tests/test-agentic.js:70:30\n    at test (/opt/llmhub-bot/tests/test-agentic.js:9:11)\n    at /opt/llmhub-bot/tests/test-agentic.js:62:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: slow_tool
+[2026-02-13 10:36:05] [ERROR] [ToolRegistry] Tool slow_tool completed in 101ms, success=false: {"error":"Tool execution timed out","stack":"Error: Tool execution timed out\n    at Timeout._onTimeout (/opt/llmhub-bot/tools/registry.js:78:60)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)"}
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 10:36:05] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Agent loop started with 0 tools available
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 1/3: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: test({"n":1})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: test → success in 0ms
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 2/3: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #2: test({"n":2})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #2: test → success in 0ms
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 3/3: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #3: test({"n":3})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #3: test → success in 0ms
+[2026-02-13 10:36:05] [WARN] [AgentLoop] Max iterations (3) reached, forcing text response
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: dup({"x":1})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: dup → success in 0ms
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 2/5: 1 tool calls
+[2026-02-13 10:36:05] [WARN] [AgentLoop] Skipped duplicate call: dup
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: fail({})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: fail → fail in 0ms
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Agent loop started with 1 tools available
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Iteration 1/5: 1 tool calls
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: generate_image({})
+[2026-02-13 10:36:05] [INFO] [AgentLoop] Tool call #1: generate_image → success in 0ms
+[2026-02-13 10:36:05] [INFO] [Gate] Heuristic match: "bot mentioned" for TestUser
+[2026-02-13 10:36:05] [INFO] [Gate] Heuristic match: "thread message" for TestUser
+[2026-02-13 10:36:05] [INFO] [Gate] Heuristic match: "reply to bot" for TestUser
+[2026-02-13 10:36:05] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 10:36:06] [INFO] [Synthesize] Output: 1 message(s), total 6 chars, 0 image(s)
+[2026-02-13 10:36:06] [INFO] [Synthesize] Empty result — nothing to send
+[2026-02-13 10:36:06] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Processing message from Tester in ch1: "What is the answer to everything?"
+[2026-02-13 10:36:06] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 10:36:06] [INFO] [Intent] Heuristic intent="definition", tone="educational", emotion="curious", memories=0, profile=none
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Layer 2 (Intent): intent=definition, tone=educational, tools=[define_word], time=153ms
+[2026-02-13 10:36:06] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2ms
+[2026-02-13 10:36:06] [INFO] [Synthesize] Output: 1 message(s), total 17 chars, 0 image(s)
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 10:36:06] [INFO] [Orchestrator] Total thinking pipeline: 155ms
+[2026-02-13 10:36:06] [WARN] [[Retry] test attempt 1/3 failed, retrying in 11ms] [object Object]
+[2026-02-13 10:36:06] [WARN] [[Retry] test attempt 2/3 failed, retrying in 25ms] [object Object]
+[2026-02-13 10:36:06] [WARN] [[Retry] test attempt 1/2 failed, retrying in 13ms] [object Object]
+[2026-02-13 10:36:07] [WARN] [[Retry] test attempt 2/2 failed, retrying in 23ms] [object Object]
+[2026-02-13 10:36:07] [WARN] [[Retry] test attempt 1/3 failed, retrying in 2453ms] [object Object]
+[2026-02-13 10:36:09] [WARN] [[Retry] test attempt 1/3 failed, retrying in 11ms] [object Object]
+[2026-02-13 10:36:09] [INFO] [Synthesize] Output: 1 message(s), total 19 chars, 1 image(s)
+[2026-02-13 10:36:09] [INFO] [Synthesize] Output: 1 message(s), total 14 chars, 0 image(s)
+[2026-02-13 10:36:09] [INFO] [Synthesize] Output: 1 message(s), total 10 chars, 0 image(s)
+[2026-02-13 10:36:09] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 10:36:09] [INFO] [Orchestrator] Processing message from Tester in ch1: "test message for fallback"
+[2026-02-13 10:36:09] [INFO] [Gate] Heuristic match: "thread message" for Tester
+[2026-02-13 10:36:09] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=1ms

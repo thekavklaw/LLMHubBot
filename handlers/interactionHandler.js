@@ -89,9 +89,8 @@ async function handleInteraction(interaction) {
   if (interaction.commandName === 'tools') {
     try {
       const ToolRegistry = require('../tools/registry');
-      // Get the registry instance from the module cache or create temp one
-      const registry = new ToolRegistry();
-      registry.loadAll();
+      // Use the singleton registry initialized at boot
+      const registry = ToolRegistry.getInstance() || (() => { const r = new ToolRegistry(); r.loadAll(); return r; })();
       const tools = registry.listTools();
       const lines = tools.map(t => `${TOOL_ICONS[t.name] || '🔧'} **${t.name}** — ${t.description.split('.')[0]}`);
       const embed = new EmbedBuilder()
