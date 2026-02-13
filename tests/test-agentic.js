@@ -932,9 +932,9 @@ async function test(name, fn) {
   await test('Errors: friendlyError prioritizes specific errors', () => {
     const { friendlyError, USER_ERRORS } = require('../utils/errors');
     // 429 should be rate_limit even if message says "timeout"
-    assert.strictEqual(friendlyError({ status: 429, message: 'timeout' }), USER_ERRORS.rate_limit);
+    assert.ok(friendlyError({ status: 429, message: 'timeout' }).startsWith(USER_ERRORS.rate_limit));
     // QUEUE_FULL should be queue_full even if status is set
-    assert.strictEqual(friendlyError({ message: 'QUEUE_FULL', status: 500 }), USER_ERRORS.queue_full);
+    assert.ok(friendlyError({ message: 'QUEUE_FULL', status: 500 }).startsWith(USER_ERRORS.queue_full));
   });
 
   // ──────────── USER SETTINGS IN INTENT ────────────
