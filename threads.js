@@ -2,8 +2,9 @@ const { ChannelType, EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
 async function createChatThread(interaction) {
-  const gptChannel = interaction.client.channels.cache.get(config.gptChannelId);
-  if (!gptChannel) throw new Error('GPT channel not found');
+  // Create thread in the SAME channel where /chat was used (inherits permissions)
+  const gptChannel = interaction.channel || interaction.client.channels.cache.get(config.gptChannelId);
+  if (!gptChannel) throw new Error('Channel not found');
 
   const now = new Date();
   const shortDate = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase().replace(/\s/g, '');

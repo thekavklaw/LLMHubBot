@@ -44,11 +44,22 @@ function updateHealth() {
 function isGptChannel(channel) {
   if (channel.id === config.gptChannelId) return true;
   if (channel.isThread() && channel.parentId === config.gptChannelId) return true;
+  // Allow threads whose parent is in the allowed channels list
+  const allowedChannels = config.allowedChannelIds;
+  if (allowedChannels.length > 0) {
+    if (allowedChannels.includes(channel.id)) return true;
+    if (channel.isThread() && allowedChannels.includes(channel.parentId)) return true;
+  }
   return false;
 }
 
 function isGptThread(channel) {
-  return channel.isThread() && channel.parentId === config.gptChannelId;
+  if (!channel.isThread()) return false;
+  if (channel.parentId === config.gptChannelId) return true;
+  // Threads in any allowed channel count as GPT threads
+  const allowedChannels = config.allowedChannelIds;
+  if (allowedChannels.length > 0 && allowedChannels.includes(channel.parentId)) return true;
+  return false;
 }
 
 function splitMessage(text, maxLen = 2000) {
@@ -170,9 +181,6 @@ async function handleMessage(message) {
       userContent = message.content;
     }
 
-    addMessage(channelId, 'user', userContent, userName);
-    logMessage(channelId, userId, userName, 'user', message.content);
-
     if (message.content.trim().length < 1 && imageUrls.length === 0) return;
 
     const rateResult = checkRateLimit(userId, channelId, inThread, message.member);
@@ -189,12 +197,17 @@ async function handleMessage(message) {
       return;
     }
 
+    // Moderation check BEFORE adding to context — only checks the new message
     const modResult = await checkMessage(message, imageUrls);
     logger.debug('MessageHandler', `Moderation result for ${userName}: safe=${modResult.safe}`);
     if (!modResult.safe) {
       logger.warn('MessageHandler', `Message from ${userName} blocked by moderation`);
-      return;
+      return; // Don't store flagged message in context or DB
     }
+
+    // Only add to context/DB AFTER moderation passes
+    addMessage(channelId, 'user', userContent, userName);
+    logMessage(channelId, userId, userName, 'user', message.content);
 
     messageCount++;
     const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
