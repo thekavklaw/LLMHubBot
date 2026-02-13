@@ -24,7 +24,7 @@ async function getSystemPrompt(channelId, userId, currentMessage, preloadedMemor
   if (config.features.memory) {
     try {
       // Use preloaded memories if available, otherwise search
-      const memories = preloadedMemories || (currentMessage ? await searchMemory(currentMessage, 3, 0.65) : []);
+      const memories = preloadedMemories || (currentMessage ? await searchMemory(currentMessage, 5, 0.65) : []);
       if (memories.length > 0) {
         const memText = memories.map(m =>
           `- ${m.content}${m.userName ? ` (about ${m.userName})` : ''}`

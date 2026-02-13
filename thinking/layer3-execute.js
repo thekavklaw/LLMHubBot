@@ -7,6 +7,7 @@
 const logger = require('../logger');
 const { getSystemPrompt } = require('../soul');
 const { getContext } = require('../context');
+const { getUserSettings } = require('../db');
 
 /**
  * Get dynamic model parameters based on intent type.
@@ -76,6 +77,14 @@ async function execute(message, context, intent) {
     promptParts.push(`\n## Key Context\n${intent.keyContext}`);
   }
 
+  // Wire user verbosity preference
+  const userSettings = getUserSettings(userId);
+  if (userSettings?.verbosity === 'concise') {
+    promptParts.push('\n\nIMPORTANT: The user prefers concise responses. Be brief and to the point.');
+  } else if (userSettings?.verbosity === 'detailed') {
+    promptParts.push('\n\nThe user prefers detailed, thorough responses. Elaborate when helpful.');
+  }
+
   const systemPrompt = promptParts.join('\n');
   logger.debug('Execute', `System prompt length: ${systemPrompt.length} chars (~${Math.ceil(systemPrompt.length / 4)} tokens est.)`);
 
@@ -96,8 +105,10 @@ async function execute(message, context, intent) {
       userId,
       userName,
       channelId,
+      guildId: context.guildId,
       generatedImages: [],
       modelParams, // pass dynamic params
+      registry: context.toolRegistry, // Enable tool fallback chains (brave→tavily, tavily→brave)
     };
 
     const timeout = context.agentLoopTimeout || 60000;

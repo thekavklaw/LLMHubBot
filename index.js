@@ -16,6 +16,9 @@ const AgentLoop = require('./agent-loop');
 const ThinkingOrchestrator = require('./thinking/orchestrator');
 const openaiClient = require('./openai-client');
 
+// ── Boot timestamp for uptime tracking ──
+const bootTime = Date.now();
+
 // ── Global error handlers ──
 process.on('unhandledRejection', (reason) => {
   logger.error('Process', 'Unhandled rejection:', reason instanceof Error ? reason : new Error(String(reason)));
@@ -228,14 +231,14 @@ async function shutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  const uptime = Math.round((Date.now() - Date.now()) / 1000); // will be replaced below
+  const uptime = Math.round((Date.now() - bootTime) / 1000);
   const { getStats } = require('./handlers/messageHandler');
   const stats = getStats();
   const { getToolStats } = require('./db');
   let toolStats = [];
   try { toolStats = getToolStats(); } catch (_) {}
 
-  logger.info('Bot', `Received ${signal}, shutting down gracefully...`);
+  logger.info('Bot', `Received ${signal}, shutting down gracefully... Uptime: ${uptime}s`);
   logger.info('Bot', `Shutdown stats: ${stats.messageCount} messages processed, ${stats.errorCount} errors, ${toolStats.length} tool types used`);
 
   // Give in-progress responses up to 5s to finish

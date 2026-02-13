@@ -13,6 +13,15 @@ module.exports = {
   },
   timeout: 60000,
   async execute(args, context) {
+    // Check if user has disabled image generation
+    const { getUserSettings } = require('../../db');
+    if (context?.userId) {
+      const settings = getUserSettings(context.userId);
+      if (settings && settings.images_enabled === 0) {
+        return { success: false, description: 'Image generation is disabled in your settings. Use `/settings images:true` to enable it.' };
+      }
+    }
+
     const { generateImage } = require('../../openai-client');
     const size = args.size || '1024x1024';
     const buffer = await generateImage(args.prompt, size);

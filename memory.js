@@ -146,7 +146,8 @@ async function storeMemory(content, meta = {}) {
       content, embeddingBuf,
       meta.userId || null, meta.userName || null,
       meta.channelId || null, meta.category || 'fact',
-      meta.metadata ? JSON.stringify(meta.metadata) : null
+      meta.metadata ? JSON.stringify(meta.metadata) : null,
+      meta.guildId || null
     );
     logger.debug('Memory', `Stored: "${content.slice(0, 60)}..." [${meta.category || 'fact'}]`);
   } catch (err) {
@@ -154,11 +155,16 @@ async function storeMemory(content, meta = {}) {
   }
 }
 
-async function searchMemory(query, limit = 5, minSimilarity = 0.65) {
+async function searchMemory(query, limit = 5, minSimilarity = 0.65, guildId = null) {
   try {
     const queryEmbedding = await getEmbedding(query);
-    // Pre-filter: last 30 days, max 500 candidates
-    const mems = getRecentMemories(config.memorySearchDays, 500);
+    // Pre-filter: last 90 days (configurable), max 500 candidates
+    let mems = getRecentMemories(config.memorySearchDays, 500);
+
+    // Scope by guild to prevent cross-server memory leaks
+    if (guildId) {
+      mems = mems.filter(m => !m.guild_id || m.guild_id === guildId);
+    }
 
     const scored = [];
     for (const mem of mems) {

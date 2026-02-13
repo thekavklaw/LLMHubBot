@@ -37,7 +37,7 @@ const config = {
   // Memory
   memoryMaxRows: 10000,
   memoryPrunePercent: 0.2,
-  memorySearchDays: 30,
+  memorySearchDays: 90,
   embeddingCacheSize: 100,
   factExtractionInterval: 15,
   reflectionInterval: 50,

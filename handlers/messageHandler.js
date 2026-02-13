@@ -158,9 +158,10 @@ async function runFactExtraction(channelId) {
     const facts = await extractFacts(recentMsgs, channelId);
     if (facts.length === 0) return;
     logger.info('Memory', `Extracted ${facts.length} facts`);
+    const guildId = recentMsgs[0]?.guildId || null;
     for (const fact of facts) {
       const userId = fact.userName ? userNameToId.get(fact.userName) : null;
-      await storeMemory(fact.content, { userId, userName: fact.userName, channelId, category: fact.category });
+      await storeMemory(fact.content, { userId, userName: fact.userName, channelId, category: fact.category, guildId });
     }
     updateProfilesFromFacts(facts, userNameToId);
   } catch (err) {
@@ -177,6 +178,7 @@ async function processMessage(message, content, mergedAttachments) {
     const userId = message.author.id;
     const userName = message.author.username;
     const displayName = message.member?.displayName || userName;
+    const guildId = message.guild?.id || null;
     const inThread = isGptThread(message.channel);
     const botId = message.client.user.id;
     const priority = getMessagePriority(message, botId);
@@ -229,7 +231,7 @@ async function processMessage(message, content, mergedAttachments) {
     }
 
     // Only add to context/DB AFTER moderation passes
-    addMessage(channelId, 'user', userContent, userName, message.id);
+    await addMessage(channelId, 'user', userContent, userName, message.id);
     logMessage(channelId, userId, userName, 'user', content);
 
     messageCount++;
@@ -283,6 +285,7 @@ async function processMessage(message, content, mergedAttachments) {
             userName,
             displayName,
             channelId,
+            guildId,
             botId,
             inThread,
             mentionsBot,
@@ -323,7 +326,7 @@ async function processMessage(message, content, mergedAttachments) {
         }
 
         // Log to context + DB
-        addMessage(channelId, 'assistant', orchestratorResult.text || '[image]');
+        await addMessage(channelId, 'assistant', orchestratorResult.text || '[image]');
         logMessage(channelId, null, 'LLMHub', 'assistant', orchestratorResult.text || '[image]');
 
         // Send Discord messages
@@ -374,7 +377,7 @@ async function processMessage(message, content, mergedAttachments) {
         try { userProfile = getProfile(userId); } catch (_) {}
 
         let relevantMemories = [];
-        try { relevantMemories = await searchMemory(content, 3, 0.6); } catch (_) {}
+        try { relevantMemories = await searchMemory(content, 5, 0.6, message.guild?.id); } catch (_) {}
 
         decision = await think(recentMessages, userProfile, relevantMemories, inThread, botId);
 
@@ -440,6 +443,13 @@ async function handleMessage(message) {
 
     logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);
 
+    // Cap input length to prevent token budget blowout
+    const MAX_MESSAGE_LENGTH = 4000;
+    if (message.content && message.content.length > MAX_MESSAGE_LENGTH) {
+      await message.reply('⚠️ That message is too long for me to process. Could you shorten it a bit? (Max ~4000 characters)');
+      return;
+    }
+
     // Debounce: coalesce rapid messages from same user+channel
     debouncer.add(message, (lastMessage, combinedContent, allAttachments) => {
       processMessage(lastMessage, combinedContent, allAttachments).catch(err => {
@@ -479,7 +489,7 @@ async function handleTextResponse(message, channelId, userId, userName, soulConf
     return;
   }
 
-  addMessage(channelId, 'assistant', response);
+  await addMessage(channelId, 'assistant', response);
   logMessage(channelId, null, 'LLMHub', 'assistant', response);
 
   for (const part of splitMessage(response)) {
@@ -529,7 +539,7 @@ async function handleSearchAndRespond(message, channelId, userId, userName, deci
       return;
     }
 
-    addMessage(channelId, 'assistant', response);
+    await addMessage(channelId, 'assistant', response);
     logMessage(channelId, null, 'LLMHub', 'assistant', response);
 
     for (const part of splitMessage(response)) {
@@ -560,7 +570,7 @@ async function handleGenerateImage(message, channelId, userId, userName, decisio
     const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.png' });
     await message.channel.send({ files: [attachment] });
 
-    addMessage(channelId, 'assistant', `[Generated image: ${decision.image_prompt}]`);
+    await addMessage(channelId, 'assistant', `[Generated image: ${decision.image_prompt}]`);
     logMessage(channelId, null, 'LLMHub', 'assistant', `[Image: ${decision.image_prompt}]`);
 
     storeMemory(`User ${userName} requested a visual/image about: ${decision.image_prompt}`, {
@@ -606,7 +616,7 @@ async function handleRespondWithImage(message, channelId, userId, userName, deci
     if (response.status === 'fulfilled' && response.value) {
       const outMod = await checkOutput(response.value, channelId);
       if (outMod.safe) {
-        addMessage(channelId, 'assistant', response.value);
+        await addMessage(channelId, 'assistant', response.value);
         logMessage(channelId, null, 'LLMHub', 'assistant', response.value);
 
         if (imageResult.status === 'fulfilled') {
@@ -656,7 +666,7 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
     const result = await modelQueue.enqueue(config.model, async () => {
       const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
       const contextMessages = getContext(channelId);
-      const context = { userId, userName, channelId, generatedImages: [] };
+      const context = { userId, userName, channelId, guildId, generatedImages: [], registry: _agentLoop?.registry };
 
       return Promise.race([
         _agentLoop.run(contextMessages, systemPrompt, context),
@@ -678,7 +688,7 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
       return;
     }
 
-    addMessage(channelId, 'assistant', result.text || '[image]');
+    await addMessage(channelId, 'assistant', result.text || '[image]');
     logMessage(channelId, null, 'LLMHub', 'assistant', result.text || '[image]');
 
     const files = [];

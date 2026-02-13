@@ -118,6 +118,13 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_message ON feedback(message_id)
 // ── Indexes ──
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp)`);
+// Add guild_id column if not present (Phase 1 migration)
+try {
+  db.exec(`ALTER TABLE memories ADD COLUMN guild_id TEXT`);
+  logger.info('DB', 'Added guild_id column to memories table');
+} catch (_) {} // Column already exists
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_guild ON memories(guild_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_channel ON memories(channel_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON user_profiles(last_seen)`);
@@ -161,7 +168,7 @@ const latestSummaryStmt = db.prepare(
   'SELECT summary FROM summaries WHERE channel_id = ? ORDER BY id DESC LIMIT 1'
 );
 const insertMemoryStmt = db.prepare(
-  'INSERT INTO memories (content, embedding, user_id, user_name, channel_id, category, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  'INSERT INTO memories (content, embedding, user_id, user_name, channel_id, category, metadata, guild_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 );
 const allMemoriesStmt = db.prepare(
   'SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata FROM memories'
@@ -234,8 +241,8 @@ function getLatestSummary(channelId) {
   return row ? row.summary : null;
 }
 
-function insertMemory(content, embedding, userId, userName, channelId, category, metadata) {
-  insertMemoryStmt.run(content, embedding, userId, userName, channelId, category, metadata);
+function insertMemory(content, embedding, userId, userName, channelId, category, metadata, guildId) {
+  insertMemoryStmt.run(content, embedding, userId, userName, channelId, category, metadata, guildId || null);
 }
 
 function getAllMemories() {

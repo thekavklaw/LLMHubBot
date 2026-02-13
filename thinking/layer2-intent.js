@@ -74,7 +74,7 @@ async function analyzeIntent(message, context, gate) {
 
   // Gather context in parallel
   const [memories, profile] = await Promise.all([
-    searchMemory(content, 3, 0.65).catch(() => []),
+    searchMemory(content, 5, 0.65, context.guildId).catch(() => []),
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 

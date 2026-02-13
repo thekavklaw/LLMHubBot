@@ -2,6 +2,8 @@ const logger = require('../../logger');
 const config = require('../../config');
 const OpenAI = require('openai');
 const { withRetry } = require('../../utils/retry');
+const { URL } = require('url');
+const dns = require('dns').promises;
 
 // SSRF protection: block private/internal IPs
 const BLOCKED_PATTERNS = [
@@ -16,6 +18,18 @@ const BLOCKED_PATTERNS = [
   /^file:/i,
   /^ftp:/i,
 ];
+
+/**
+ * DNS-level SSRF check: resolve hostname and block private/internal IPs.
+ */
+async function isPrivateIP(hostname) {
+  try {
+    const { address } = await dns.lookup(hostname);
+    return /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|169\.254\.|::1|fc00:|fe80:)/.test(address);
+  } catch {
+    return true; // Block on DNS failure
+  }
+}
 
 module.exports = {
   name: 'summarize_url',
@@ -35,6 +49,12 @@ module.exports = {
     if (!/^https?:\/\/.+/i.test(url)) throw new Error('Invalid URL: must start with http:// or https://');
     for (const pattern of BLOCKED_PATTERNS) {
       if (pattern.test(url)) throw new Error('Blocked: cannot access internal/private URLs');
+    }
+
+    // DNS-level SSRF check (catches rebinding, custom DNS, etc.)
+    const parsedUrl = new URL(url);
+    if (await isPrivateIP(parsedUrl.hostname)) {
+      throw new Error('Blocked: URL points to a private/internal address');
     }
 
     // Fetch with limits

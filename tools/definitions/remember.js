@@ -17,6 +17,7 @@ module.exports = {
       userId: context?.userId,
       userName: context?.userName,
       channelId: context?.channelId,
+      guildId: context?.guildId,
       category,
     });
     return { stored: true, content: args.content, category };

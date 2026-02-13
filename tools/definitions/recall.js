@@ -13,7 +13,7 @@ module.exports = {
   },
   async execute(args) {
     const limit = Math.min(20, Math.max(1, args.limit || 5));
-    const results = await searchMemory(args.query, limit);
+    const results = await searchMemory(args.query, limit, 0.65, context?.guildId);
     if (!results || results.length === 0) {
       return { found: false, message: 'No matching memories found.', results: [] };
     }
