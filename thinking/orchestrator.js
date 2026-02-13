@@ -72,11 +72,15 @@ class ThinkingOrchestrator {
       loadLevel,
     };
 
+    const statusEmbed = fullContext.statusEmbed;
+
     // Layer 1: Relevance Gate
     let gate;
     const l1Start = Date.now();
     try {
+      await statusEmbed?.updateStage('gate', 'active');
       gate = await relevanceGate(message, fullContext);
+      await statusEmbed?.updateStage('gate', 'done', gate.engage ? 'Engaged' : 'Skipped');
       logger.info('Orchestrator', `Layer 1 (Gate): engage=${gate.engage}, reason="${gate.reason}", confidence=${gate.confidence}, time=${Date.now() - l1Start}ms`);
     } catch (err) {
       logger.error('Orchestrator', 'Layer 1 (Gate) failed:', { error: err.message, stack: err.stack });
@@ -92,7 +96,9 @@ class ThinkingOrchestrator {
     let intent;
     const l2Start = Date.now();
     try {
+      await statusEmbed?.updateStage('intent', 'active');
       intent = await analyzeIntent(message, fullContext, gate);
+      await statusEmbed?.updateStage('intent', 'done', intent.intent);
       logger.info('Orchestrator', `Layer 2 (Intent): intent=${intent.intent}, tone=${intent.tone}, tools=[${intent.suggestedTools.join(',')}], time=${Date.now() - l2Start}ms`);
     } catch (err) {
       logger.error('Orchestrator', 'Layer 2 (Intent) failed:', { error: err.message, stack: err.stack });
@@ -103,7 +109,9 @@ class ThinkingOrchestrator {
     let result;
     const l3Start = Date.now();
     try {
+      await statusEmbed?.updateStage('execute', 'active');
       result = await execute(message, fullContext, intent);
+      await statusEmbed?.updateStage('execute', 'done', `${result.toolsUsed.length} tools`);
       logger.info('Orchestrator', `Layer 3 (Execute): ${result.toolsUsed.length} tools, ${result.iterations} iterations, time=${Date.now() - l3Start}ms`);
     } catch (err) {
       logger.error('Orchestrator', 'Layer 3 (Execute) failed, falling back to direct response:', { error: err.message, stack: err.stack });
@@ -134,7 +142,9 @@ class ThinkingOrchestrator {
     let response;
     const l4Start = Date.now();
     try {
+      await statusEmbed?.updateStage('synthesize', 'active');
       response = await synthesize(result, intent, fullContext);
+      await statusEmbed?.updateStage('synthesize', 'done');
       logger.info('Orchestrator', `Layer 4 (Synthesize): action=${response.action}, messages=${(response.messages || []).length}, time=${Date.now() - l4Start}ms`);
     } catch (err) {
       logger.error('Orchestrator', 'Layer 4 (Synthesize) failed, sending raw text:', { error: err.message, stack: err.stack });
@@ -167,10 +177,14 @@ class ThinkingOrchestrator {
                           reflCount % 5 === 0;
 
     if (shouldReflect) {
+      statusEmbed?.updateStage('reflect', 'active');
       setImmediate(() => {
         const l5Start = Date.now();
         reflect(message, response, fullContext)
-          .then(() => logger.debug('Orchestrator', `Layer 5 (Reflect): time=${Date.now() - l5Start}ms`))
+          .then(() => {
+            statusEmbed?.updateStage('reflect', 'done');
+            logger.debug('Orchestrator', `Layer 5 (Reflect): time=${Date.now() - l5Start}ms`);
+          })
           .catch(err => logger.error('Orchestrator', 'Layer 5 (Reflect) failed:', { error: err.message, stack: err.stack }));
       });
     } else {

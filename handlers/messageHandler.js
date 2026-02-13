@@ -25,6 +25,7 @@ const logger = require('../logger');
 const { ModelQueue } = require('../utils/model-queue');
 const MessageDebouncer = require('../utils/debouncer');
 const { friendlyError } = require('../utils/errors');
+const { StatusEmbed } = require('../utils/status-embed');
 const { recordProcessed, recordError: recordHealthError } = require('../health');
 
 // ── Per-model queue system ──
@@ -284,11 +285,9 @@ async function processMessage(message, content, mergedAttachments) {
 
       const stopTyping = startTyping(message.channel);
 
-      // "Still thinking..." message after 5s
-      let thinkingMsg = null;
-      const thinkingTimer = setTimeout(async () => {
-        try { thinkingMsg = await message.channel.send('💭 *Still thinking...*'); } catch (_) {}
-      }, 5000);
+      // Status embed — only shown if processing takes >1.5s
+      const statusEmbed = new StatusEmbed(message.channel);
+      const showTimer = setTimeout(() => statusEmbed.show(), 1500);
 
       try {
         const orchestratorResult = await modelQueue.enqueue(config.model, () =>
@@ -305,13 +304,14 @@ async function processMessage(message, content, mergedAttachments) {
             botRecentlySpokeInChannel,
             lastBotMessageInChannel,
             gptChannelId: config.gptChannelId,
+            statusEmbed,
           }),
           priority
         );
 
         stopTyping();
-        clearTimeout(thinkingTimer);
-        if (thinkingMsg) { try { await thinkingMsg.delete(); } catch (_) {} }
+        clearTimeout(showTimer);
+        await statusEmbed.destroy();
 
         // Remove backpressure emoji
         if (isQueued) {
@@ -374,8 +374,8 @@ async function processMessage(message, content, mergedAttachments) {
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
         stopTyping();
-        clearTimeout(thinkingTimer);
-        if (thinkingMsg) { try { await thinkingMsg.delete(); } catch (_) {} }
+        clearTimeout(showTimer);
+        await statusEmbed.destroy();
         if (isQueued) {
           try { await message.reactions.cache.get('⏳')?.users?.remove(botId); } catch (_) {}
         }
