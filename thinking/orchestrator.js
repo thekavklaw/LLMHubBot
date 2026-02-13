@@ -29,6 +29,10 @@ class ThinkingOrchestrator {
    * @returns {Object} { action, messages, images, reason }
    */
   async process(message, context) {
+    const pipelineStart = Date.now();
+    const contentPreview = (typeof message.content === 'string' ? message.content : '[media]').slice(0, 80);
+    logger.info('Orchestrator', `Processing message from ${context.userName} in ${context.channelId}: "${contentPreview}"`);
+
     // Inject dependencies into context
     const fullContext = {
       ...context,
@@ -38,30 +42,63 @@ class ThinkingOrchestrator {
     };
 
     // Layer 1: Relevance Gate
-    const gate = await relevanceGate(message, fullContext);
-    logger.debug('Orchestrator', `Gate: engage=${gate.engage} reason="${gate.reason}" confidence=${gate.confidence}`);
+    let gate;
+    const l1Start = Date.now();
+    try {
+      gate = await relevanceGate(message, fullContext);
+      logger.info('Orchestrator', `Layer 1 (Gate): engage=${gate.engage}, reason="${gate.reason}", confidence=${gate.confidence}, time=${Date.now() - l1Start}ms`);
+    } catch (err) {
+      logger.error('Orchestrator', 'Layer 1 (Gate) failed:', { error: err.message, stack: err.stack });
+      return { action: 'ignore', reason: 'Gate error', messages: [], images: [] };
+    }
 
     if (!gate.engage) {
+      logger.info('Orchestrator', `Total thinking pipeline: ${Date.now() - pipelineStart}ms (ignored)`);
       return { action: 'ignore', reason: gate.reason, messages: [], images: [] };
     }
 
     // Layer 2: Intent Analysis
-    const intent = await analyzeIntent(message, fullContext, gate);
-    logger.debug('Orchestrator', `Intent: ${intent.intent} tone=${intent.tone} tools=[${intent.suggestedTools.join(',')}]`);
+    let intent;
+    const l2Start = Date.now();
+    try {
+      intent = await analyzeIntent(message, fullContext, gate);
+      logger.info('Orchestrator', `Layer 2 (Intent): intent=${intent.intent}, tone=${intent.tone}, tools=[${intent.suggestedTools.join(',')}], time=${Date.now() - l2Start}ms`);
+    } catch (err) {
+      logger.error('Orchestrator', 'Layer 2 (Intent) failed:', { error: err.message, stack: err.stack });
+      intent = { intent: 'discussion', suggestedTools: [], tone: 'helpful', memoryContext: [], userContext: null, keyContext: '', approach: '' };
+    }
 
     // Layer 3: Execution
-    const result = await execute(message, fullContext, intent);
+    let result;
+    const l3Start = Date.now();
+    try {
+      result = await execute(message, fullContext, intent);
+      logger.info('Orchestrator', `Layer 3 (Execute): ${result.toolsUsed.length} tools, ${result.iterations} iterations, time=${Date.now() - l3Start}ms`);
+    } catch (err) {
+      logger.error('Orchestrator', 'Layer 3 (Execute) failed:', { error: err.message, stack: err.stack });
+      return { action: 'ignore', reason: 'Execution error', messages: [], images: [] };
+    }
 
     // Layer 4: Response Synthesis
-    const response = await synthesize(result, intent, fullContext);
+    let response;
+    const l4Start = Date.now();
+    try {
+      response = await synthesize(result, intent, fullContext);
+      logger.info('Orchestrator', `Layer 4 (Synthesize): action=${response.action}, messages=${(response.messages || []).length}, time=${Date.now() - l4Start}ms`);
+    } catch (err) {
+      logger.error('Orchestrator', 'Layer 4 (Synthesize) failed:', { error: err.message, stack: err.stack });
+      return { action: 'ignore', reason: 'Synthesis error', messages: [], images: [] };
+    }
 
     // Layer 5: Reflection (async, non-blocking)
     setImmediate(() => {
-      reflect(message, response, fullContext).catch(err =>
-        logger.error('Orchestrator', 'Reflection error:', err)
-      );
+      const l5Start = Date.now();
+      reflect(message, response, fullContext)
+        .then(() => logger.debug('Orchestrator', `Layer 5 (Reflect): time=${Date.now() - l5Start}ms`))
+        .catch(err => logger.error('Orchestrator', 'Layer 5 (Reflect) failed:', { error: err.message, stack: err.stack }));
     });
 
+    logger.info('Orchestrator', `Total thinking pipeline: ${Date.now() - pipelineStart}ms`);
     return response;
   }
 }

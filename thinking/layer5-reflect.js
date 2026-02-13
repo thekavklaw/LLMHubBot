@@ -43,17 +43,21 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
 
     const parsed = JSON.parse(result);
 
+    logger.info('Reflect', `Extracted: ${(parsed.userFacts || []).length} user facts, memory=${parsed.memoryWorthStoring ? 'yes' : 'no'}, topics=${(parsed.topics || []).length}`);
+
     // Update user profile with new facts
     if (parsed.userFacts && Array.isArray(parsed.userFacts) && userId) {
       for (const fact of parsed.userFacts) {
         if (fact && fact.length > 5) {
           appendUserNotes(userId, fact);
+          logger.debug('Reflect', `User profile update for ${userName}: "${fact}"`);
         }
       }
     }
 
     // Store memorable facts in RAG
     if (parsed.memoryWorthStoring) {
+      logger.info('Reflect', `Storing memory: "${parsed.memoryWorthStoring.slice(0, 80)}"`);
       await storeMemory(parsed.memoryWorthStoring, {
         userId,
         userName,
@@ -84,7 +88,7 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
 
     logger.debug('Reflect', `Processed reflection for ${userName}: ${JSON.stringify(parsed).slice(0, 100)}`);
   } catch (err) {
-    logger.error('Reflect', 'Reflection error:', err.message);
+    logger.error('Reflect', 'Reflection error:', { error: err.message, stack: err.stack });
   }
 }
 

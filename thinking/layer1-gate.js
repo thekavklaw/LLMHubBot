@@ -15,32 +15,40 @@ async function relevanceGate(message, context) {
 
   // ── Heuristic: Always engage ──
   if (mentionsBot) {
+    logger.info('Gate', `Heuristic match: "bot mentioned" for ${context.userName}`);
     return { engage: true, reason: 'Bot mentioned', confidence: 1.0 };
   }
   if (repliesToBot) {
+    logger.info('Gate', `Heuristic match: "reply to bot" for ${context.userName}`);
     return { engage: true, reason: 'Reply to bot message', confidence: 1.0 };
   }
   if (inThread) {
+    logger.info('Gate', `Heuristic match: "thread message" for ${context.userName}`);
     return { engage: true, reason: 'In /chat thread', confidence: 0.95 };
   }
 
   // ── Heuristic: Never engage ──
   if (content.length < 3) {
+    logger.debug('Gate', `Heuristic match: "too short" (${content.length} chars)`);
     return { engage: false, reason: 'Message too short', confidence: 0.95 };
   }
   if (PURE_EMOJI.test(content)) {
+    logger.debug('Gate', 'Heuristic match: "pure emoji"');
     return { engage: false, reason: 'Pure emoji', confidence: 0.95 };
   }
   if (LOW_VALUE.test(content)) {
+    logger.debug('Gate', `Heuristic match: "low-value filler" ("${content}")`);
     return { engage: false, reason: 'Low-value filler', confidence: 0.9 };
   }
 
   // ── Heuristic: Likely engage ──
   if (channelId === gptChannelId && content.endsWith('?')) {
+    logger.info('Gate', 'Heuristic match: "question in #gpt channel"');
     return { engage: true, reason: 'Question in #gpt channel', confidence: 0.8 };
   }
 
   // ── LLM fallback for ambiguous cases ──
+  logger.info('Gate', `No heuristic matched, falling back to LLM for: "${content.slice(0, 60)}"`);
   try {
     const gateModel = process.env.GATE_MODEL || 'gpt-4.1-mini';
     const result = await thinkWithModel([
@@ -55,13 +63,15 @@ async function relevanceGate(message, context) {
     ], gateModel);
 
     const parsed = JSON.parse(result);
-    return {
+    const gateResult = {
       engage: !!parsed.engage,
       reason: parsed.reason || 'LLM decision',
       confidence: Math.min(1, Math.max(0, parseFloat(parsed.confidence) || 0.5)),
     };
+    logger.info('Gate', `LLM fallback result: engage=${gateResult.engage}, reason="${gateResult.reason}", confidence=${gateResult.confidence}`);
+    return gateResult;
   } catch (err) {
-    logger.error('Gate', 'LLM fallback error:', err.message);
+    logger.error('Gate', 'LLM fallback error:', { error: err.message, stack: err.stack });
     // Conservative: don't engage on error
     return { engage: false, reason: 'Gate error — defaulting to ignore', confidence: 0.3 };
   }

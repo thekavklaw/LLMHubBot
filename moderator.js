@@ -48,6 +48,7 @@ async function moderate(content, imageUrls = []) {
       input.push({ type: 'image_url', image_url: { url } });
     }
 
+    logger.debug('Moderator', `API call: text=${content ? content.length : 0} chars, images=${imageUrls.length}`);
     const result = await openai.moderations.create({
       model: 'omni-moderation-latest',
       input: input.length === 1 && input[0].type === 'text' ? content : input,
@@ -68,9 +69,14 @@ async function moderate(content, imageUrls = []) {
       }
     }
 
-    return { safe: flaggedCats.length === 0, categories: flaggedCats, scores };
+    const safe = flaggedCats.length === 0;
+    if (!safe) {
+      logger.warn('Moderator', `Content flagged — categories: [${flaggedCats.join(', ')}], scores: ${JSON.stringify(scores)}`);
+    }
+    logger.debug('Moderator', `Moderation result: safe=${safe}, categories=[${flaggedCats.join(', ')}]`);
+    return { safe, categories: flaggedCats, scores };
   } catch (err) {
-    logger.error('Moderator', 'API error:', err);
+    logger.error('Moderator', 'API error:', { error: err.message, stack: err.stack });
     return { safe: true, categories: [], scores: {} };
   }
 }

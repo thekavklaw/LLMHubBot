@@ -115,6 +115,8 @@ async function handleMessage(message) {
     if (message.author.bot) return;
     if (!isGptChannel(message.channel)) return;
 
+    logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);
+
     const channelId = message.channel.id;
     const userId = message.author.id;
     const userName = message.author.username;
@@ -151,8 +153,9 @@ async function handleMessage(message) {
     if (message.content.trim().length < 1 && imageUrls.length === 0) return;
 
     const rateResult = checkRateLimit(userId, channelId, inThread, message.member);
+    logger.debug('MessageHandler', `Rate limit check for ${userName}: allowed=${rateResult.allowed}`);
     if (!rateResult.allowed) {
-      logger.info('RateLimit', `Blocked ${userName} (retry in ${rateResult.retryAfter}s)`);
+      logger.warn('MessageHandler', `Rate limited ${userName} (retry in ${rateResult.retryAfter}s)`);
       try {
         await message.channel.send({ embeds: [
           new EmbedBuilder()
@@ -164,7 +167,11 @@ async function handleMessage(message) {
     }
 
     const modResult = await checkMessage(message, imageUrls);
-    if (!modResult.safe) return;
+    logger.debug('MessageHandler', `Moderation result for ${userName}: safe=${modResult.safe}`);
+    if (!modResult.safe) {
+      logger.warn('MessageHandler', `Message from ${userName} blocked by moderation`);
+      return;
+    }
 
     messageCount++;
     const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
@@ -240,6 +247,8 @@ async function handleMessage(message) {
         for (const msg of orchestratorResult.messages || []) {
           await message.channel.send(msg);
         }
+        const responsePreview = (orchestratorResult.text || '[image]').slice(0, 80);
+        logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
         clearInterval(typingInterval);
         throw err;

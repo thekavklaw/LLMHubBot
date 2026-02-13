@@ -14,11 +14,13 @@ class AgentLoop {
     const toolCallHistory = [];
     const startTime = Date.now();
 
+    logger.info('AgentLoop', `Agent loop started with ${tools.length} tools available`);
+
     const fullMessages = [{ role: 'system', content: systemPrompt }, ...messages];
 
     while (iterations < this.maxIterations) {
       if (Date.now() - startTime > this.timeout) {
-        logger.warn('AgentLoop', `Timeout after ${iterations} iterations`);
+        logger.warn('AgentLoop', `Timeout after ${iterations} iterations (${Date.now() - startTime}ms elapsed)`);
         break;
       }
 
@@ -34,6 +36,8 @@ class AgentLoop {
           images: context.generatedImages || [],
         };
       }
+
+      logger.info('AgentLoop', `Iteration ${iterations}/${this.maxIterations}: ${response.tool_calls.length} tool calls`);
 
       // Add assistant message with tool calls
       fullMessages.push({
@@ -53,6 +57,7 @@ class AgentLoop {
         // Duplicate detection
         const callSig = `${toolCall.function.name}:${JSON.stringify(args)}`;
         if (toolCallHistory.includes(callSig)) {
+          logger.warn('AgentLoop', `Skipped duplicate call: ${toolCall.function.name}`);
           fullMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
@@ -62,9 +67,11 @@ class AgentLoop {
         }
         toolCallHistory.push(callSig);
 
-        logger.info('AgentLoop', `Tool call: ${toolCall.function.name}(${JSON.stringify(args).substring(0, 100)})`);
+        const toolStart = Date.now();
+        logger.info('AgentLoop', `Tool call #${toolCallHistory.length}: ${toolCall.function.name}(${JSON.stringify(args).substring(0, 100)})`);
 
         const result = await this.registry.executeTool(toolCall.function.name, args, context);
+        logger.info('AgentLoop', `Tool call #${toolCallHistory.length}: ${toolCall.function.name} → ${result.success ? 'success' : 'fail'} in ${Date.now() - toolStart}ms`);
 
         // Track generated images
         if (toolCall.function.name === 'generate_image' && result.success) {

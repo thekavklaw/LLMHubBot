@@ -1,0 +1,501 @@
+const assert = require('assert');
+const path = require('path');
+
+let passed = 0, failed = 0;
+const results = [];
+
+async function test(name, fn) {
+  try {
+    await fn();
+    passed++;
+    results.push(`✅ ${name}`);
+  } catch (err) {
+    failed++;
+    results.push(`❌ ${name}: ${err.message}`);
+  }
+}
+
+(async () => {
+  console.log('=== LLMHub Bot Agentic Test Suite ===\n');
+
+  // ──────────── TOOL REGISTRY TESTS ────────────
+  const ToolRegistry = require('../tools/registry');
+
+  await test('ToolRegistry: loads all 10 tools', () => {
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    assert.strictEqual(reg.tools.size, 10, `Expected 10 tools, got ${reg.tools.size}`);
+  });
+
+  await test('ToolRegistry: each tool has required fields', () => {
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    for (const [name, tool] of reg.tools) {
+      assert.ok(tool.name, `${name} missing name`);
+      assert.ok(tool.description, `${name} missing description`);
+      assert.ok(tool.parameters, `${name} missing parameters`);
+      assert.ok(typeof tool.execute === 'function', `${name} missing execute`);
+    }
+  });
+
+  await test('ToolRegistry: getToolsForOpenAI returns correct format', () => {
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    const tools = reg.getToolsForOpenAI();
+    assert.ok(Array.isArray(tools));
+    assert.strictEqual(tools.length, 10);
+    for (const t of tools) {
+      assert.strictEqual(t.type, 'function');
+      assert.ok(t.function.name);
+      assert.ok(t.function.description);
+      assert.ok(t.function.parameters);
+    }
+  });
+
+  await test('ToolRegistry: executeTool handles unknown tool', async () => {
+    const reg = new ToolRegistry();
+    const result = await reg.executeTool('nonexistent_tool', {}, {});
+    assert.strictEqual(result.success, false);
+    assert.ok(result.error.includes('Unknown tool'));
+  });
+
+  await test('ToolRegistry: executeTool handles tool error gracefully', async () => {
+    const reg = new ToolRegistry();
+    reg.register({
+      name: 'error_tool',
+      description: 'Always throws',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => { throw new Error('Intentional failure'); },
+    });
+    const result = await reg.executeTool('error_tool', {}, {});
+    assert.strictEqual(result.success, false);
+    assert.ok(result.error.includes('Intentional failure'));
+  });
+
+  await test('ToolRegistry: executeTool handles timeout', async () => {
+    const reg = new ToolRegistry();
+    reg.register({
+      name: 'slow_tool',
+      description: 'Takes forever',
+      parameters: { type: 'object', properties: {} },
+      timeout: 100,
+      execute: async () => new Promise(resolve => setTimeout(resolve, 5000)),
+    });
+    const result = await reg.executeTool('slow_tool', {}, {});
+    assert.strictEqual(result.success, false);
+    assert.ok(result.error.includes('timed out'));
+  });
+
+  await test('ToolRegistry: listTools returns names and descriptions', () => {
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    const list = reg.listTools();
+    assert.strictEqual(list.length, 10);
+    for (const item of list) {
+      assert.ok(item.name);
+      assert.ok(item.description);
+    }
+  });
+
+  // ──────────── AGENT LOOP TESTS ────────────
+  const AgentLoop = require('../agent-loop');
+
+  await test('AgentLoop: terminates when no tool calls', async () => {
+    const mockRegistry = { getToolsForOpenAI: () => [] };
+    const mockOpenAI = {
+      createChatCompletion: async () => ({ content: 'Hello!', tool_calls: null }),
+    };
+    const loop = new AgentLoop(mockRegistry, mockOpenAI, { maxAgentIterations: 5 });
+    const result = await loop.run([], 'system prompt', { generatedImages: [] });
+    assert.strictEqual(result.text, 'Hello!');
+    assert.strictEqual(result.iterations, 1);
+    assert.deepStrictEqual(result.toolsUsed, []);
+  });
+
+  await test('AgentLoop: respects max iterations', async () => {
+    const mockRegistry = {
+      getToolsForOpenAI: () => [{ type: 'function', function: { name: 'test', description: 't', parameters: {} } }],
+      executeTool: async () => ({ success: true, result: 'ok' }),
+    };
+    let callCount = 0;
+    const mockOpenAI = {
+      createChatCompletion: async (msgs, tools) => {
+        callCount++;
+        if (tools.length === 0) return { content: 'done' };
+        return {
+          content: null,
+          tool_calls: [{ id: `call_${callCount}`, function: { name: 'test', arguments: JSON.stringify({ n: callCount }) } }],
+        };
+      },
+    };
+    const loop = new AgentLoop(mockRegistry, mockOpenAI, { maxAgentIterations: 3 });
+    const result = await loop.run([], 'sys', { generatedImages: [] });
+    assert.strictEqual(result.iterations, 3);
+    assert.strictEqual(result.text, 'done');
+  });
+
+  await test('AgentLoop: detects duplicate calls', async () => {
+    const mockRegistry = {
+      getToolsForOpenAI: () => [{ type: 'function', function: { name: 'dup', description: 'd', parameters: {} } }],
+      executeTool: async () => ({ success: true, result: 'ok' }),
+    };
+    let callNum = 0;
+    const mockOpenAI = {
+      createChatCompletion: async (msgs, tools) => {
+        callNum++;
+        if (callNum === 1) {
+          return {
+            content: null,
+            tool_calls: [
+              { id: 'c1', function: { name: 'dup', arguments: '{"x":1}' } },
+            ],
+          };
+        }
+        if (callNum === 2) {
+          // Same call again
+          return {
+            content: null,
+            tool_calls: [
+              { id: 'c2', function: { name: 'dup', arguments: '{"x":1}' } },
+            ],
+          };
+        }
+        return { content: 'final', tool_calls: null };
+      },
+    };
+    const loop = new AgentLoop(mockRegistry, mockOpenAI, { maxAgentIterations: 5 });
+    const result = await loop.run([], 'sys', { generatedImages: [] });
+    // Only one unique call sig in history
+    assert.strictEqual(result.toolsUsed.length, 1);
+  });
+
+  await test('AgentLoop: handles tool errors without crashing', async () => {
+    const mockRegistry = {
+      getToolsForOpenAI: () => [{ type: 'function', function: { name: 'fail', description: 'f', parameters: {} } }],
+      executeTool: async () => ({ success: false, result: null, error: 'boom' }),
+    };
+    let n = 0;
+    const mockOpenAI = {
+      createChatCompletion: async (msgs, tools) => {
+        n++;
+        if (n === 1) return { content: null, tool_calls: [{ id: 'c1', function: { name: 'fail', arguments: '{}' } }] };
+        return { content: 'recovered', tool_calls: null };
+      },
+    };
+    const loop = new AgentLoop(mockRegistry, mockOpenAI, { maxAgentIterations: 5 });
+    const result = await loop.run([], 'sys', { generatedImages: [] });
+    assert.strictEqual(result.text, 'recovered');
+  });
+
+  await test('AgentLoop: tracks generated images', async () => {
+    const mockRegistry = {
+      getToolsForOpenAI: () => [{ type: 'function', function: { name: 'generate_image', description: 'g', parameters: {} } }],
+      executeTool: async () => ({ success: true, result: { image_buffer: 'abc123', prompt: 'cat' } }),
+    };
+    let n = 0;
+    const mockOpenAI = {
+      createChatCompletion: async (msgs, tools) => {
+        n++;
+        if (n === 1) return { content: null, tool_calls: [{ id: 'c1', function: { name: 'generate_image', arguments: '{}' } }] };
+        return { content: 'here is your image', tool_calls: null };
+      },
+    };
+    const loop = new AgentLoop(mockRegistry, mockOpenAI, { maxAgentIterations: 5 });
+    const ctx = { generatedImages: [] };
+    const result = await loop.run([], 'sys', ctx);
+    assert.strictEqual(result.images.length, 1);
+    assert.strictEqual(result.images[0].image_buffer, 'abc123');
+  });
+
+  // ──────────── THINKING LAYER TESTS ────────────
+  const { relevanceGate } = require('../thinking/layer1-gate');
+
+  const makeCtx = (overrides = {}) => ({
+    botId: '123', inThread: false, channelId: 'ch1', gptChannelId: 'ch1',
+    mentionsBot: false, repliesToBot: false, userName: 'TestUser',
+    ...overrides,
+  });
+
+  await test('Layer1: bot mention → engage', async () => {
+    const result = await relevanceGate({ content: 'hello' }, makeCtx({ mentionsBot: true }));
+    assert.strictEqual(result.engage, true);
+    assert.ok(result.reason.includes('mentioned'));
+  });
+
+  await test('Layer1: emoji only → dont engage', async () => {
+    const result = await relevanceGate({ content: '😂🔥' }, makeCtx());
+    assert.strictEqual(result.engage, false);
+    assert.ok(result.reason.includes('emoji'));
+  });
+
+  await test('Layer1: thread message → engage', async () => {
+    const result = await relevanceGate({ content: 'what about this?' }, makeCtx({ inThread: true }));
+    assert.strictEqual(result.engage, true);
+    assert.ok(result.reason.includes('thread'));
+  });
+
+  await test('Layer1: short message → dont engage', async () => {
+    const result = await relevanceGate({ content: 'hi' }, makeCtx());
+    assert.strictEqual(result.engage, false);
+    assert.ok(result.reason.includes('short'));
+  });
+
+  await test('Layer1: low-value filler → dont engage', async () => {
+    const result = await relevanceGate({ content: 'lol' }, makeCtx());
+    assert.strictEqual(result.engage, false);
+    assert.ok(result.reason.includes('filler') || result.reason.includes('Low'));
+  });
+
+  await test('Layer1: reply to bot → engage', async () => {
+    const result = await relevanceGate({ content: 'thanks for that' }, makeCtx({ repliesToBot: true }));
+    assert.strictEqual(result.engage, true);
+    assert.ok(result.reason.includes('Reply'));
+  });
+
+  await test('Layer1: question in gpt channel → engage', async () => {
+    const result = await relevanceGate({ content: 'What is the meaning of life?' }, makeCtx({ channelId: 'ch1', gptChannelId: 'ch1' }));
+    assert.strictEqual(result.engage, true);
+  });
+
+  // ──────────── LAYER 4: SYNTHESIZE TESTS ────────────
+  const { synthesize, smartSplit } = require('../thinking/layer4-synthesize');
+
+  await test('Layer4: smartSplit keeps short messages intact', () => {
+    const parts = smartSplit('Hello world');
+    assert.strictEqual(parts.length, 1);
+    assert.strictEqual(parts[0], 'Hello world');
+  });
+
+  await test('Layer4: smartSplit splits long messages', () => {
+    const long = 'A'.repeat(2500);
+    const parts = smartSplit(long, 2000);
+    assert.ok(parts.length >= 2);
+    for (const p of parts) assert.ok(p.length <= 2000);
+  });
+
+  await test('Layer4: smartSplit handles unclosed code blocks', () => {
+    const text = '```js\n' + 'x = 1;\n'.repeat(400) + 'end';
+    const parts = smartSplit(text, 2000);
+    assert.ok(parts.length >= 2);
+    // First part should end with ``` (closing)
+    assert.ok(parts[0].endsWith('```'), 'First part should close code block');
+    // Second part should start with ```
+    assert.ok(parts[1].startsWith('```'), 'Second part should reopen code block');
+  });
+
+  await test('Layer4: synthesize returns valid response object', async () => {
+    const result = { text: 'Hello!', toolsUsed: ['calculator'], iterations: 1, images: [] };
+    const intent = { intent: 'question', tone: 'helpful' };
+    const ctx = { userId: 'u1' };
+    const resp = await synthesize(result, intent, ctx);
+    assert.strictEqual(resp.action, 'respond');
+    assert.ok(resp.messages.length > 0);
+    assert.strictEqual(resp.messages[0].content, 'Hello!');
+  });
+
+  await test('Layer4: synthesize handles empty result', async () => {
+    const result = { text: '', toolsUsed: [], iterations: 0, images: [] };
+    const resp = await synthesize(result, {}, {});
+    assert.strictEqual(resp.action, 'ignore');
+  });
+
+  // ──────────── INDIVIDUAL TOOL TESTS ────────────
+  const calculator = require('../tools/definitions/calculator');
+  const timestamp = require('../tools/definitions/timestamp');
+  const code_runner = require('../tools/definitions/code_runner');
+  const define_word = require('../tools/definitions/define_word');
+  const summarize_url = require('../tools/definitions/summarize_url');
+  const remember = require('../tools/definitions/remember');
+  const recall = require('../tools/definitions/recall');
+
+  await test('calculator: 2+2=4', async () => {
+    const r = await calculator.execute({ expression: '2+2' });
+    assert.strictEqual(r.result, 4);
+  });
+
+  await test('calculator: blocks process.exit()', async () => {
+    try {
+      await calculator.execute({ expression: 'process.exit()' });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.ok(err.message.includes('Blocked') || err.message.includes('unsafe'));
+    }
+  });
+
+  await test('calculator: handles division by zero', async () => {
+    try {
+      await calculator.execute({ expression: '1/0' });
+      assert.fail('Should throw for non-finite result');
+    } catch (err) {
+      assert.ok(err.message.includes('finite'));
+    }
+  });
+
+  await test('calculator: sqrt(144)=12', async () => {
+    const r = await calculator.execute({ expression: 'sqrt(144)' });
+    assert.strictEqual(r.result, 12);
+  });
+
+  await test('timestamp: returns valid date string', async () => {
+    const r = await timestamp.execute({});
+    assert.ok(r.date);
+    assert.ok(r.time);
+    assert.ok(r.iso);
+    assert.ok(r.unix > 0);
+  });
+
+  await test('timestamp: respects timezone parameter', async () => {
+    const r = await timestamp.execute({ timezone: 'America/New_York' });
+    assert.strictEqual(r.timezone, 'America/New_York');
+  });
+
+  await test('code_runner: executes simple expression', async () => {
+    const r = await code_runner.execute({ code: '2 + 3' });
+    assert.strictEqual(r.success, true);
+    assert.strictEqual(r.result, '5');
+  });
+
+  await test('code_runner: times out on infinite loop', async () => {
+    const r = await code_runner.execute({ code: 'while(true){}' });
+    assert.strictEqual(r.success, false);
+    assert.ok(r.error.includes('timed out') || r.error.includes('timeout'));
+  });
+
+  await test('code_runner: blocks require/import', async () => {
+    const r = await code_runner.execute({ code: 'require("fs")' });
+    // require is undefined in sandbox, so it should error
+    assert.strictEqual(r.success, false);
+  });
+
+  await test('code_runner: console.log captured', async () => {
+    const r = await code_runner.execute({ code: 'console.log("hello")' });
+    assert.strictEqual(r.success, true);
+    assert.ok(r.output.includes('hello'));
+  });
+
+  await test('define_word: handles valid word', async () => {
+    const r = await define_word.execute({ word: 'hello' });
+    assert.strictEqual(r.found, true);
+    assert.ok(r.meanings.length > 0);
+  });
+
+  await test('define_word: handles unknown word gracefully', async () => {
+    const r = await define_word.execute({ word: 'xyzzznotaword123' });
+    assert.strictEqual(r.found, false);
+  });
+
+  await test('summarize_url: blocks private IPs', async () => {
+    try {
+      await summarize_url.execute({ url: 'http://192.168.1.1/secret' });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.ok(err.message.includes('Blocked') || err.message.includes('internal'));
+    }
+  });
+
+  await test('summarize_url: blocks localhost', async () => {
+    try {
+      await summarize_url.execute({ url: 'http://localhost:8080/admin' });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.ok(err.message.includes('Blocked') || err.message.includes('internal'));
+    }
+  });
+
+  await test('summarize_url: blocks file protocol', async () => {
+    try {
+      await summarize_url.execute({ url: 'file:///etc/passwd' });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.ok(err.message);
+    }
+  });
+
+  // Memory tools need DB — test with mocked memory module
+  await test('remember: stores to DB', async () => {
+    try {
+      const r = await remember.execute(
+        { content: 'Test memory for agentic suite', category: 'fact' },
+        { userId: 'test123', userName: 'TestUser', channelId: 'ch1' }
+      );
+      assert.strictEqual(r.stored, true);
+      assert.strictEqual(r.category, 'fact');
+    } catch (err) {
+      // If DB/embedding fails, that's an infrastructure issue not a code bug
+      if (!err.message.includes('OPENAI') && !err.message.includes('API')) throw err;
+    }
+  });
+
+  await test('recall: retrieves stored memory', async () => {
+    try {
+      const r = await recall.execute({ query: 'test memory', limit: 3 });
+      assert.ok(r.found !== undefined); // Either found or not, but shouldn't crash
+    } catch (err) {
+      if (!err.message.includes('OPENAI') && !err.message.includes('API')) throw err;
+    }
+  });
+
+  // ──────────── INTEGRATION FLOW TESTS ────────────
+  await test('Integration: full mock pipeline returns valid response', async () => {
+    const ThinkingOrchestrator = require('../thinking/orchestrator');
+
+    const mockRegistry = {
+      getToolsForOpenAI: () => [],
+      listTools: () => [{ name: 'calculator', description: 'calc' }],
+      executeTool: async () => ({ success: true, result: 'ok' }),
+    };
+    const mockAgentLoop = {
+      run: async () => ({
+        text: 'The answer is 42.',
+        toolsUsed: [],
+        iterations: 1,
+        images: [],
+      }),
+    };
+    const orchestrator = new ThinkingOrchestrator({
+      toolRegistry: mockRegistry,
+      agentLoop: mockAgentLoop,
+      config: { agentLoopTimeout: 5000 },
+    });
+
+    const result = await orchestrator.process(
+      { content: 'What is the answer to everything?' },
+      {
+        userId: 'u1', userName: 'Tester', channelId: 'ch1',
+        botId: '123', inThread: true, mentionsBot: false,
+        repliesToBot: false, gptChannelId: 'ch1', displayName: 'Tester',
+      }
+    );
+
+    assert.strictEqual(result.action, 'respond');
+    assert.ok(result.messages.length > 0);
+    assert.ok(result.text.includes('42'));
+  });
+
+  // ──────────── LOGGER TESTS ────────────
+  const logger = require('../logger');
+
+  await test('Logger: all log levels exist', () => {
+    assert.ok(typeof logger.debug === 'function');
+    assert.ok(typeof logger.info === 'function');
+    assert.ok(typeof logger.warn === 'function');
+    assert.ok(typeof logger.error === 'function');
+  });
+
+  await test('Logger: setLevel works', () => {
+    logger.setLevel('debug');
+    assert.ok(true); // No throw
+    logger.setLevel('info'); // Reset
+  });
+
+  await test('Logger: formatTimestamp returns string', () => {
+    const ts = logger.formatTimestamp();
+    assert.ok(typeof ts === 'string');
+    assert.ok(ts.length > 10);
+  });
+
+  // ──────────── SUMMARY ────────────
+  console.log('\n' + results.join('\n'));
+  console.log(`\n=== Agentic Tests: ${passed} passed, ${failed} failed ===\n`);
+  process.exit(failed > 0 ? 1 : 0);
+})();

@@ -26,6 +26,7 @@ async function execute(message, context, intent) {
   }
 
   const systemPrompt = promptParts.join('\n');
+  logger.debug('Execute', `System prompt length: ${systemPrompt.length} chars (~${Math.ceil(systemPrompt.length / 4)} tokens est.)`);
   const contextMessages = getContext(channelId);
 
   // Build tool filter from intent suggestions
@@ -53,8 +54,9 @@ async function execute(message, context, intent) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeout)),
     ]);
 
+    logger.info('Execute', `Agent loop completed in ${result.iterations} iterations, ${result.toolsUsed.length} tools used`);
     if (result.toolsUsed.length > 0) {
-      logger.info('Execute', `Used ${result.toolsUsed.length} tools in ${result.iterations} iterations`);
+      logger.debug('Execute', `Tools used: ${result.toolsUsed.join('; ')}`);
     }
 
     return {
@@ -65,6 +67,7 @@ async function execute(message, context, intent) {
     };
   }
 
+  logger.info('Execute', 'No agent loop available, using simple generation fallback');
   // Fallback: no agent loop, use simple generation
   const { generateResponse } = require('../openai-client');
   const { getSoulConfig } = require('../soul');

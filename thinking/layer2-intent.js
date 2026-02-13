@@ -17,7 +17,13 @@ async function analyzeIntent(message, context, gate) {
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 
+  logger.info('Intent', `Retrieved ${memories.length} memories for query, user profile: ${profile ? 'found' : 'none'}`);
+  if (memories.length > 0) {
+    logger.debug('Intent', `Memory relevance scores: ${memories.map(m => m.similarity ? m.similarity.toFixed(3) : 'n/a').join(', ')}`);
+  }
+
   const profileStr = profile ? formatProfileForPrompt(userId) : '';
+  if (profileStr) logger.debug('Intent', `User profile summary: ${profileStr.slice(0, 150)}`);
   const memoriesStr = memories.length > 0
     ? memories.map(m => `- ${m.content}`).join('\n')
     : '';
@@ -51,6 +57,7 @@ async function analyzeIntent(message, context, gate) {
 
     const parsed = JSON.parse(result);
 
+    logger.info('Intent', `Detected intent="${parsed.intent}", tone="${parsed.tone}", suggestedTools=[${(parsed.suggestedTools || []).join(',')}]`);
     return {
       intent: parsed.intent || 'discussion',
       suggestedTools: Array.isArray(parsed.suggestedTools) ? parsed.suggestedTools : [],
@@ -62,7 +69,7 @@ async function analyzeIntent(message, context, gate) {
       approach: parsed.approach || '',
     };
   } catch (err) {
-    logger.error('Intent', 'Analysis error:', err.message);
+    logger.error('Intent', 'Analysis error:', { error: err.message, stack: err.stack });
     return {
       intent: 'discussion',
       suggestedTools: [],

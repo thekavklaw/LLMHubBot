@@ -68,11 +68,17 @@ async function synthesize(result, intent, context) {
   const { userId } = context;
 
   if (!result.text && result.images.length === 0) {
+    logger.info('Synthesize', 'Empty result — nothing to send');
     return { action: 'ignore', reason: 'Empty result', messages: [], images: [] };
   }
 
   const text = result.text || '';
   const parts = smartSplit(text);
+  const totalLen = text.length;
+  logger.info('Synthesize', `Output: ${parts.length} message(s), total ${totalLen} chars, ${result.images.length} image(s)`);
+  if (parts.length > 1) {
+    logger.debug('Synthesize', `Split into ${parts.length} parts: [${parts.map(p => p.length).join(', ')}] chars`);
+  }
 
   // Build Discord message objects
   const messages = [];
