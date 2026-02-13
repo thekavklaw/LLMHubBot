@@ -68,7 +68,21 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tool_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_name TEXT NOT NULL,
+    user_id TEXT,
+    channel_id TEXT,
+    success BOOLEAN DEFAULT 1,
+    execution_time_ms INTEGER DEFAULT 0,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // ── Indexes ──
+db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_channel ON memories(channel_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON user_profiles(last_seen)`);
@@ -201,6 +215,24 @@ function getState(key) {
   return row ? row.value : null;
 }
 
+// ── Tool usage ──
+const insertToolUsageStmt = db.prepare(
+  'INSERT INTO tool_usage (tool_name, user_id, channel_id, success, execution_time_ms) VALUES (?, ?, ?, ?, ?)'
+);
+const toolStatsStmt = db.prepare(`
+  SELECT tool_name, COUNT(*) as total, SUM(success) as successes,
+    ROUND(AVG(execution_time_ms)) as avg_time_ms
+  FROM tool_usage GROUP BY tool_name ORDER BY total DESC
+`);
+
+function logToolUsage(toolName, userId, channelId, success, executionTimeMs) {
+  insertToolUsageStmt.run(toolName, userId, channelId, success ? 1 : 0, executionTimeMs || 0);
+}
+
+function getToolStats() {
+  return toolStatsStmt.all();
+}
+
 function setState(key, value) {
   setStateStmt.run(key, String(value));
 }
@@ -211,4 +243,5 @@ module.exports = {
   insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories,
   upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics,
   getState, setState,
+  logToolUsage, getToolStats,
 };

@@ -75,3 +75,56 @@
 [2026-02-13 06:18:58] [INFO] [Bot] Slash commands registered
 [2026-02-13 06:19:00] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 06:19:00] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 06:23:06] [INFO] [RateLimit] User rl-block-1770963786557 hit limit in rl-blkch-1770963786557, cooldown 60s
+[2026-02-13 06:23:06] [INFO] [RateLimit] User rl-thread-1770963786558 hit limit in rl-thrch-1770963786558, cooldown 60s
+[2026-02-13 06:23:06] [INFO] [QA] test log entry
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 06:23:06] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 06:23:11] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 06:23:20] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 06:23:20] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 06:23:20] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 06:23:20] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 06:23:20] [INFO] [Bot] Slash commands registered
+[2026-02-13 06:23:21] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 06:23:21] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

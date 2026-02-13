@@ -45,9 +45,12 @@ async function registerCommands() {
         { name: '1536×1024 (Landscape)', value: '1536x1024' },
         { name: '1024×1536 (Portrait)', value: '1024x1536' },
       ));
+    const toolsCmd = new SlashCommandBuilder()
+      .setName('tools')
+      .setDescription('List all available tools LLMHub can use');
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON(), imagineCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {

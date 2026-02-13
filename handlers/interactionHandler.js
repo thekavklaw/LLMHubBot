@@ -22,8 +22,35 @@ function checkImagineRateLimit(userId) {
   return { allowed: true };
 }
 
+const TOOL_ICONS = {
+  brave_search: '🔍', tavily_search: '🌐', generate_image: '🎨',
+  calculator: '🧮', timestamp: '🕐', define_word: '📖',
+  summarize_url: '📄', remember: '💾', recall: '🔎', code_runner: '💻',
+};
+
 async function handleInteraction(interaction) {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'tools') {
+    try {
+      const ToolRegistry = require('../tools/registry');
+      // Get the registry instance from the module cache or create temp one
+      const registry = new ToolRegistry();
+      registry.loadAll();
+      const tools = registry.listTools();
+      const lines = tools.map(t => `${TOOL_ICONS[t.name] || '🔧'} **${t.name}** — ${t.description.split('.')[0]}`);
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🧰 Available Tools')
+        .setDescription(lines.join('\n'))
+        .setFooter({ text: `${tools.length} tools loaded` })
+        .setTimestamp();
+      return interaction.reply({ embeds: [embed] });
+    } catch (err) {
+      logger.error('Interaction', '/tools error:', err);
+      return interaction.reply({ content: '❌ Failed to list tools.', ephemeral: true });
+    }
+  }
 
   if (interaction.commandName === 'chat') {
     try {

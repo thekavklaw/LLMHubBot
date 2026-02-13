@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../logger');
+const { logToolUsage } = require('../db');
 
 class ToolRegistry {
   constructor() {
@@ -70,10 +71,12 @@ class ToolRegistry {
       ]);
       const elapsed = Date.now() - start;
       logger.info('ToolRegistry', `${name} executed in ${elapsed}ms`);
+      try { logToolUsage(name, context?.userId, context?.channelId, true, elapsed); } catch (_) {}
       return { success: true, result, error: null };
     } catch (err) {
       const elapsed = Date.now() - start;
       logger.error('ToolRegistry', `${name} failed after ${elapsed}ms:`, err);
+      try { logToolUsage(name, context?.userId, context?.channelId, false, elapsed); } catch (_) {}
       return { success: false, result: null, error: err.message };
     }
   }
