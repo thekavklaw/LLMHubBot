@@ -1,6 +1,7 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createChatThread } = require('../threads');
 const { generateImage } = require('../openai-client');
+const config = require('../config');
 const logger = require('../logger');
 
 // Rate limit: max 3 /imagine per user per 10 minutes
@@ -30,6 +31,26 @@ const TOOL_ICONS = {
 
 async function handleInteraction(interaction) {
   if (!interaction.isChatInputCommand()) return;
+
+  // Block DMs
+  if (!interaction.guild) {
+    return interaction.reply({ content: '❌ Commands are not available in DMs.', ephemeral: true });
+  }
+
+  // Block other guilds
+  if (config.allowedGuildId && interaction.guild.id !== config.allowedGuildId) {
+    return interaction.reply({ content: '❌ This bot is not available in this server.', ephemeral: true });
+  }
+
+  // Channel whitelist
+  const allowedChannels = config.allowedChannelIds;
+  if (allowedChannels.length > 0) {
+    const channelId = interaction.channel?.id;
+    const parentId = interaction.channel?.parentId;
+    if (!allowedChannels.includes(channelId) && !allowedChannels.includes(parentId)) {
+      return interaction.reply({ content: '❌ Commands are not available in this channel.', ephemeral: true });
+    }
+  }
 
   if (interaction.commandName === 'tools') {
     try {

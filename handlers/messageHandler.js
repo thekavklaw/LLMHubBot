@@ -113,6 +113,29 @@ async function runFactExtraction(channelId) {
 async function handleMessage(message) {
   try {
     if (message.author.bot) return;
+
+    // Block DMs
+    if (!message.guild) {
+      logger.info('Guard', 'Blocked DM from ' + message.author.tag);
+      return;
+    }
+
+    // Block other guilds
+    if (config.allowedGuildId && message.guild.id !== config.allowedGuildId) {
+      logger.info('Guard', 'Blocked message from unauthorized guild: ' + message.guild.id);
+      return;
+    }
+
+    // Channel whitelist (allow threads whose parent is whitelisted)
+    const allowedChannels = config.allowedChannelIds;
+    if (allowedChannels.length > 0) {
+      const channelId = message.channel.id;
+      const parentId = message.channel.parentId;
+      if (!allowedChannels.includes(channelId) && !allowedChannels.includes(parentId)) {
+        return;
+      }
+    }
+
     if (!isGptChannel(message.channel)) return;
 
     logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);

@@ -799,3 +799,32 @@ If you want to t" (164 chars)
 [2026-02-13 06:37:20] [INFO] [Bot] Slash commands registered
 [2026-02-13 06:37:21] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 06:37:21] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 06:39:00] [INFO] [Bot] Received SIGTERM, shutting down gracefully...
+[2026-02-13 06:39:00] [INFO] [Bot] Shutdown stats: 0 messages processed, 0 errors, 5 tool types used
+[2026-02-13 06:39:02] [INFO] [Bot] Shutdown complete.
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 06:39:03] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 06:39:03] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 06:39:03] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 06:39:03] [INFO] [Bot] Slash commands registered
+[2026-02-13 06:39:03] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 06:39:03] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

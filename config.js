@@ -76,6 +76,10 @@ const config = {
   intentModel: process.env.INTENT_MODEL || 'gpt-4.1-mini',
   reflectionIntervalLayers: parseInt(process.env.REFLECTION_INTERVAL || '5', 10),
 
+  // Guard rails
+  allowedGuildId: process.env.ALLOWED_GUILD_ID || '',
+  allowedChannelIds: (process.env.ALLOWED_CHANNEL_IDS || '').split(',').filter(Boolean),
+
   // Feature flags
   features: {
     memory: true,
