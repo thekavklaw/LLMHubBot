@@ -1,108 +1,94 @@
 /**
  * @module thinking/layer2-intent
- * @description Analyzes user intent, determines response approach, and gathers
- * relevant context (memories, user profile, settings) for downstream layers.
+ * @description Analyzes user intent using fast heuristics (no LLM call),
+ * gathers relevant context (memories, user profile, settings) for downstream layers.
  */
 
 const logger = require('../logger');
-const { thinkWithModel } = require('../openai-client');
-const { withRetry } = require('../utils/retry');
 const { searchMemory } = require('../memory');
 const { getProfile, formatProfileForPrompt } = require('../users');
 const { getUserSettings } = require('../db');
 
 /**
+ * Fast heuristic intent classification — no LLM call needed.
+ */
+function classifyIntent(messageContent) {
+  const lower = messageContent.toLowerCase();
+
+  // Image requests
+  if (/\b(draw|paint|generate|create|show me|visualize|imagine|picture of)\b/i.test(lower)) {
+    return { intent: 'image_request', tone: 'creative' };
+  }
+  // Code requests
+  if (/\b(run|execute|code|python|javascript|function|algorithm)\b/i.test(lower)) {
+    return { intent: 'code_request', tone: 'technical' };
+  }
+  // Questions about current events
+  if (/\b(latest|recent|today|current|news|what happened)\b/i.test(lower)) {
+    return { intent: 'current_info', tone: 'informative', suggestSearch: true };
+  }
+  // Definitions
+  if (/\b(what is|what are|define|meaning of|what does .+ mean)\b/i.test(lower)) {
+    return { intent: 'definition', tone: 'educational' };
+  }
+  // Math
+  if (/\b(calculate|compute|solve|what is \d|how much is)\b/i.test(lower)) {
+    return { intent: 'calculation', tone: 'precise' };
+  }
+  // URL summarization
+  if (/https?:\/\/\S+/.test(lower) && /\b(summarize|summary|tldr|what does this say)\b/i.test(lower)) {
+    return { intent: 'summarize_url', tone: 'concise' };
+  }
+  // Correction
+  if (/\b(that's wrong|you're wrong|actually|no,? that|incorrect|try again|not right)\b/i.test(lower)) {
+    return { intent: 'correction', tone: 'receptive' };
+  }
+  // Default
+  return { intent: 'general', tone: 'helpful' };
+}
+
+/**
  * Layer 2: Intent Analysis
- * Determines what the user wants and how to approach it.
+ * Uses heuristics for classification, still loads user profile and memories.
  */
 async function analyzeIntent(message, context, gate) {
   const content = typeof message.content === 'string' ? message.content : '[media]';
   const { userId, userName, channelId } = context;
 
+  // Heuristic classification (instant, no LLM)
+  const classification = classifyIntent(content);
+
   // Gather context in parallel
   const [memories, profile] = await Promise.all([
-    searchMemory(content, 3, 0.6).catch(() => []),
+    searchMemory(content, 3, 0.65).catch(() => []),
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 
-  logger.info('Intent', `Retrieved ${memories.length} memories for query, user profile: ${profile ? 'found' : 'none'}`);
-  if (memories.length > 0) {
-    logger.debug('Intent', `Memory relevance scores: ${memories.map(m => m.similarity ? m.similarity.toFixed(3) : 'n/a').join(', ')}`);
-  }
+  logger.info('Intent', `Heuristic intent="${classification.intent}", tone="${classification.tone}", memories=${memories.length}, profile=${profile ? 'found' : 'none'}`);
 
   // Load user settings
   const userSettings = getUserSettings(userId);
-  if (userSettings) {
-    logger.debug('Intent', `User settings: verbosity=${userSettings.verbosity}, images=${userSettings.images_enabled}`);
-  }
 
-  const profileStr = profile ? formatProfileForPrompt(userId) : '';
-  if (profileStr) logger.debug('Intent', `User profile summary: ${profileStr.slice(0, 150)}`);
-  const memoriesStr = memories.length > 0
-    ? memories.map(m => `- ${m.content}`).join('\n')
-    : '';
+  // Build suggested tools from intent
+  const suggestedTools = [];
+  if (classification.intent === 'image_request') suggestedTools.push('generate_image');
+  if (classification.intent === 'code_request') suggestedTools.push('code_runner');
+  if (classification.intent === 'current_info' || classification.suggestSearch) suggestedTools.push('brave_search', 'tavily_search');
+  if (classification.intent === 'definition') suggestedTools.push('define_word');
+  if (classification.intent === 'calculation') suggestedTools.push('calculator');
+  if (classification.intent === 'summarize_url') suggestedTools.push('summarize_url');
 
-  // Build settings instructions
-  let settingsInstruction = '';
-  if (userSettings) {
-    if (userSettings.verbosity === 'concise') settingsInstruction += ' User prefers concise, shorter responses.';
-    if (userSettings.verbosity === 'detailed') settingsInstruction += ' User prefers detailed, thorough responses.';
-    if (!userSettings.images_enabled) settingsInstruction += ' Do NOT suggest image generation for this user.';
-  }
-
-  // Get available tool names for context
-  const toolNames = context.toolRegistry
-    ? context.toolRegistry.listTools().map(t => `${t.name}: ${t.description}`).join('\n')
-    : '';
-
-  const intentModel = process.env.INTENT_MODEL || 'gpt-4.1-mini';
-
-  try {
-    const result = await withRetry(() => thinkWithModel([
-      {
-        role: 'system',
-        content: `Analyze user intent for a Discord AI bot response.${settingsInstruction} Available tools:\n${toolNames || 'none'}\n\nReturn JSON:
-{
-  "intent": "question|request|creative|discussion|greeting|help|image_request",
-  "suggestedTools": ["tool_name"],
-  "tone": "educational|casual|technical|witty|helpful",
-  "includeImage": false,
-  "keyContext": "relevant context to include in response",
-  "approach": "brief guidance on how to respond"
-}`,
-      },
-      {
-        role: 'user',
-        content: `User: ${userName}\n${profileStr ? `Profile: ${profileStr}\n` : ''}${memoriesStr ? `Memories:\n${memoriesStr}\n` : ''}Message: "${content.slice(0, 500)}"`,
-      },
-    ], intentModel), { label: 'intent-analysis', maxRetries: 2 });
-
-    const parsed = JSON.parse(result);
-
-    logger.info('Intent', `Detected intent="${parsed.intent}", tone="${parsed.tone}", suggestedTools=[${(parsed.suggestedTools || []).join(',')}]`);
-    return {
-      intent: parsed.intent || 'discussion',
-      suggestedTools: Array.isArray(parsed.suggestedTools) ? parsed.suggestedTools : [],
-      tone: parsed.tone || 'helpful',
-      includeImage: !!parsed.includeImage,
-      memoryContext: memories,
-      userContext: profile,
-      keyContext: parsed.keyContext || '',
-      approach: parsed.approach || '',
-    };
-  } catch (err) {
-    logger.error('Intent', 'Analysis error:', { error: err.message, stack: err.stack });
-    return {
-      intent: 'discussion',
-      suggestedTools: [],
-      tone: 'helpful',
-      includeImage: false,
-      memoryContext: memories,
-      userContext: profile,
-      keyContext: '',
-      approach: '',
-    };
-  }
+  return {
+    intent: classification.intent,
+    suggestedTools,
+    tone: classification.tone,
+    includeImage: classification.intent === 'image_request',
+    memoryContext: memories,
+    userContext: profile,
+    userSettings,
+    keyContext: '',
+    approach: '',
+  };
 }
 
-module.exports = { analyzeIntent };
+module.exports = { analyzeIntent, classifyIntent };

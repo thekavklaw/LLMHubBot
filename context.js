@@ -13,9 +13,22 @@ const logger = require('./logger');
 const MAX_CONTEXT_TOKENS = 6000;
 const SUMMARIZE_OLDEST_PERCENT = 0.6;
 const MAX_CONTEXT_MESSAGES = 100; // max messages to keep in SQLite per channel
+const MAX_CACHED_CHANNELS = 100;
 
-// channelId -> { messages, messageCount, summary, loaded }
+// channelId -> { messages, messageCount, summary, loaded, lastAccess }
 const contexts = new Map();
+
+/** Evict least recently used channels if over limit */
+function evictIfNeeded() {
+  if (contexts.size <= MAX_CACHED_CHANNELS) return;
+  const entries = [...contexts.entries()].sort((a, b) => (a[1].lastAccess || 0) - (b[1].lastAccess || 0));
+  const toEvict = entries.slice(0, contexts.size - MAX_CACHED_CHANNELS);
+  for (const [key] of toEvict) {
+    contexts.delete(key);
+    channelLocks.delete(key);
+  }
+  if (toEvict.length > 0) logger.info('Context', `Evicted ${toEvict.length} stale channels from cache`);
+}
 
 // ── Per-channel mutex (promise-chain lock) ──
 const channelLocks = new Map();
@@ -26,11 +39,22 @@ async function withChannelLock(channelId, fn) {
   let resolve;
   const next = new Promise(r => { resolve = r; });
   channelLocks.set(channelId, next);
-  await prev;
+  try {
+    await Promise.race([
+      prev,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Channel lock timeout')), 90000)),
+    ]);
+  } catch (err) {
+    logger.warn('Context', `Lock timeout for channel ${channelId}, proceeding anyway`);
+  }
   try {
     return await fn();
   } finally {
     resolve();
+    // Clean up resolved lock
+    if (channelLocks.get(channelId) === next) {
+      channelLocks.delete(channelId);
+    }
   }
 }
 
@@ -45,12 +69,15 @@ function ensureContext(channelId) {
       name: row.name || undefined,
       messageId: row.message_id || undefined,
     }));
-    contexts.set(channelId, { messages, messageCount: messages.length, summary: dbSummary || '', loaded: true });
+    contexts.set(channelId, { messages, messageCount: messages.length, summary: dbSummary || '', loaded: true, lastAccess: Date.now() });
+    evictIfNeeded();
     if (messages.length > 0) {
       logger.info('Context', `Lazy-loaded ${messages.length} messages for channel ${channelId}`);
     }
   }
-  return contexts.get(channelId);
+  const ctx = contexts.get(channelId);
+  ctx.lastAccess = Date.now();
+  return ctx;
 }
 
 function tryParseJson(str) {

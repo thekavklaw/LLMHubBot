@@ -33,7 +33,10 @@ module.exports = {
         code = `import subprocess\nresult = subprocess.run(['node', '-e', '${escaped}'], capture_output=True, text=True, timeout=10)\nprint(result.stdout, end='')\nif result.stderr:\n    import sys; print(result.stderr, end='', file=sys.stderr)`;
       }
 
-      const execution = await sandbox.runCode(code, { timeoutMs: 10000 });
+      const execution = await Promise.race([
+        sandbox.runCode(code, { timeoutMs: 10000 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Execution timeout')), 15000)),
+      ]);
 
       return {
         success: !execution.error,

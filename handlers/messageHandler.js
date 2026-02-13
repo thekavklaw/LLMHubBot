@@ -334,6 +334,14 @@ async function processMessage(message, content) {
             logger.error('MessageHandler', `Failed to send message part: ${sendErr.message}`);
           }
         }
+        // First-time user tip
+        try {
+          const profile = getProfile(userId);
+          if (!profile || !profile.message_count || profile.message_count <= 1) {
+            await message.channel.send("💡 *Tip: Use `/help` to see everything I can do!*");
+          }
+        } catch (_) {}
+
         const responsePreview = (orchestratorResult.text || '[image]').slice(0, 80);
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {

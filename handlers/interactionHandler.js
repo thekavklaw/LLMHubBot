@@ -60,6 +60,26 @@ async function handleInteraction(interaction) {
     }
   }
 
+  if (interaction.commandName === 'help') {
+    const embed = new EmbedBuilder()
+      .setTitle('🤖 LLMHub — What I Can Do')
+      .setColor(0x5865F2)
+      .setDescription("Hey! I'm LLMHub, your AI assistant in this server. Here's what I've got:")
+      .addFields(
+        { name: '💬 Chat', value: 'Just talk to me in #gpt or use `/chat` to start a thread', inline: false },
+        { name: '🎨 Images', value: '`/imagine <prompt>` or just ask me to draw/visualize something', inline: true },
+        { name: '🔍 Search', value: 'Ask me anything current — I can search the web', inline: true },
+        { name: '💻 Code', value: 'I can run Python and JavaScript in a sandbox', inline: true },
+        { name: '🧮 Math', value: 'Complex calculations, conversions, you name it', inline: true },
+        { name: '📖 Define', value: 'Word definitions and explanations', inline: true },
+        { name: '📄 Summarize', value: 'Give me a URL, I\'ll summarize it', inline: true },
+        { name: '🧠 Memory', value: 'I remember our conversations and learn your preferences', inline: false },
+        { name: '⚙️ Commands', value: '`/chat` — Start a thread\n`/imagine` — Generate an image\n`/tools` — See all tools\n`/settings` — Your preferences\n`/reset` — Clear conversation\n`/help` — This message', inline: false }
+      )
+      .setFooter({ text: 'Tip: I work best in threads — use /chat to start one!' });
+    return interaction.reply({ embeds: [embed], ephemeral: true });
+  }
+
   if (interaction.commandName === 'tools') {
     try {
       const ToolRegistry = require('../tools/registry');

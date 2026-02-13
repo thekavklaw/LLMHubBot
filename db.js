@@ -158,6 +158,11 @@ const recentMemoriesStmt = db.prepare(
    FROM memories WHERE timestamp >= datetime('now', ?)
    ORDER BY timestamp DESC`
 );
+const recentMemoriesLimitedStmt = db.prepare(
+  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata
+   FROM memories WHERE timestamp >= datetime('now', ?)
+   ORDER BY timestamp DESC LIMIT ?`
+);
 const memoryCountStmt = db.prepare('SELECT COUNT(*) as cnt FROM memories');
 const pruneMemoriesStmt = db.prepare(
   `DELETE FROM memories WHERE id IN (
@@ -224,7 +229,8 @@ function getAllMemories() {
   return allMemoriesStmt.all();
 }
 
-function getRecentMemories(days = 30) {
+function getRecentMemories(days = 30, limit = null) {
+  if (limit) return recentMemoriesLimitedStmt.all(`-${days} days`, limit);
   return recentMemoriesStmt.all(`-${days} days`);
 }
 
@@ -339,8 +345,10 @@ function saveUserSettings(userId, verbosity, imagesEnabled) {
 }
 
 function getDb() { return db; }
+function close() { try { db.close(); } catch (_) {} }
 
 module.exports = {
+  close,
   logMessage, getRecentMessages,
   saveSummary, getLatestSummary,
   insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories,

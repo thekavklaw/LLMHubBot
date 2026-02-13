@@ -40,7 +40,9 @@ class LRUCache {
 const embeddingCache = new LRUCache(config.embeddingCacheSize);
 
 async function getEmbedding(text) {
-  const key = text.slice(0, 200); // Cache key from first 200 chars
+  // Use hash of full text as cache key to avoid collisions
+  const crypto = require('crypto');
+  const key = crypto.createHash('md5').update(text).digest('hex');
   const cached = embeddingCache.get(key);
   if (cached) return cached;
 
@@ -152,11 +154,11 @@ async function storeMemory(content, meta = {}) {
   }
 }
 
-async function searchMemory(query, limit = 5, minSimilarity = 0.7) {
+async function searchMemory(query, limit = 5, minSimilarity = 0.65) {
   try {
     const queryEmbedding = await getEmbedding(query);
-    // Pre-filter: last 30 days only
-    const mems = getRecentMemories(config.memorySearchDays);
+    // Pre-filter: last 30 days, max 500 candidates
+    const mems = getRecentMemories(config.memorySearchDays, 500);
 
     const scored = [];
     for (const mem of mems) {

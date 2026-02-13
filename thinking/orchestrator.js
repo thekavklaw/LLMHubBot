@@ -152,8 +152,8 @@ class ThinkingOrchestrator {
       }
     }
 
-    // Layer 5: Reflection (async, non-blocking) — skip under load
-    if (loadLevel <= 1) {
+    // Layer 5: Reflection (async, non-blocking) — skip under load, but always run for corrections
+    if (loadLevel <= 1 || (intent && intent.intent === 'correction')) {
       setImmediate(() => {
         const l5Start = Date.now();
         reflect(message, response, fullContext)

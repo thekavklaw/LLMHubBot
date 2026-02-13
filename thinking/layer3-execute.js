@@ -15,10 +15,15 @@ const { getContext } = require('../context');
 async function execute(message, context, intent) {
   const { channelId, userId, userName, agentLoop } = context;
 
-  // Build enhanced system prompt
-  const basePrompt = await getSystemPrompt(channelId, userId, message.content);
+  // Build enhanced system prompt, passing memories from Layer 2 to avoid duplicate search
+  const basePrompt = await getSystemPrompt(channelId, userId, message.content, intent.memoryContext);
 
   const promptParts = [basePrompt];
+
+  // Correction handling
+  if (intent.intent === 'correction') {
+    promptParts.push(`\n## Important\nThe user is correcting your previous response. Acknowledge the mistake gracefully and provide the corrected information. Don't be defensive.`);
+  }
 
   // Add intent guidance
   if (intent.approach) {

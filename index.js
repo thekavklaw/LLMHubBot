@@ -58,6 +58,9 @@ async function registerCommands() {
     const resetCmd = new SlashCommandBuilder()
       .setName('reset')
       .setDescription('Clear conversation context for this channel');
+    const helpCmd = new SlashCommandBuilder()
+      .setName('help')
+      .setDescription('See everything LLMHub can do');
     const settingsCmd = new SlashCommandBuilder()
       .setName('settings')
       .setDescription('Configure your LLMHub preferences')
@@ -70,7 +73,7 @@ async function registerCommands() {
       .addBooleanOption(opt => opt.setName('images').setDescription('Enable/disable image generation in responses'));
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON(), helpCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {
@@ -201,10 +204,14 @@ async function shutdown(signal) {
   logger.info('Bot', `Shutdown stats: ${stats.messageCount} messages processed, ${stats.errorCount} errors, ${toolStats.length} tool types used`);
 
   // Give in-progress responses up to 5s to finish
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 5000));
 
   try { client.destroy(); } catch (_) {}
+  try { const { close: dbClose } = require('./db'); dbClose(); } catch (_) {}
   logger.info('Bot', 'Shutdown complete.');
+
+  // Grace period before hard exit
+  setTimeout(() => process.exit(0), 10000);
   process.exit(0);
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));

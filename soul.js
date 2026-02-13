@@ -14,16 +14,17 @@ function getSoulContent() {
   try { return fs.readFileSync(SOUL_PATH, 'utf-8'); } catch { return ''; }
 }
 
-async function getSystemPrompt(channelId, userId, currentMessage) {
+async function getSystemPrompt(channelId, userId, currentMessage, preloadedMemories) {
   const parts = [];
   const soul = getSoulContent();
   if (soul) parts.push(soul);
 
   parts.push(`\nYou're in a Discord group conversation. Keep responses concise (under 2000 chars). Use markdown sparingly. Match the energy of the conversation. Don't respond to everything — only when you can genuinely add value.`);
 
-  if (currentMessage && config.features.memory) {
+  if (config.features.memory) {
     try {
-      const memories = await searchMemory(currentMessage, 3, 0.65);
+      // Use preloaded memories if available, otherwise search
+      const memories = preloadedMemories || (currentMessage ? await searchMemory(currentMessage, 3, 0.65) : []);
       if (memories.length > 0) {
         const memText = memories.map(m =>
           `- ${m.content}${m.userName ? ` (about ${m.userName})` : ''}`
