@@ -1,5 +1,6 @@
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
+const { withRetry } = require('../utils/retry');
 
 const PURE_EMOJI = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+$/u;
 const LOW_VALUE = /^(lol|lmao|nice|ok|yeah|yep|nah|true|fr|facts|damn|rip|gg|bruh|haha|heh|wow|same|mood|based|real|bet|w|l|f|oof|hmm|idk|nvm|ty|thx|thanks|np|mb|gl|ez|cap|sus|slay|fire|lit|vibe|word|tru|yea|ya|ye|nope|welp|aight|ayo|sheesh|deadass|no cap|for real|i see|got it|makes sense|fair enough|good point|interesting)$/i;
@@ -51,7 +52,7 @@ async function relevanceGate(message, context) {
   logger.info('Gate', `No heuristic matched, falling back to LLM for: "${content.slice(0, 60)}"`);
   try {
     const gateModel = process.env.GATE_MODEL || 'gpt-4.1-mini';
-    const result = await thinkWithModel([
+    const result = await withRetry(() => thinkWithModel([
       {
         role: 'system',
         content: 'Decide if a Discord AI bot should respond. Return JSON: {"engage":true/false,"reason":"brief","confidence":0.0-1.0}. Bias toward NOT responding unless the message invites bot input.',
@@ -60,7 +61,7 @@ async function relevanceGate(message, context) {
         role: 'user',
         content: `Message from ${context.userName}: "${content.slice(0, 200)}"`,
       },
-    ], gateModel);
+    ], gateModel), { label: 'gate-llm', maxRetries: 2 });
 
     const parsed = JSON.parse(result);
     const gateResult = {

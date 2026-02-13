@@ -80,7 +80,7 @@ async function synthesize(result, intent, context) {
     logger.debug('Synthesize', `Split into ${parts.length} parts: [${parts.map(p => p.length).join(', ')}] chars`);
   }
 
-  // Build Discord message objects
+  // Build Discord message objects with multi-message support
   const messages = [];
   const imageFiles = [];
 
@@ -93,19 +93,34 @@ async function synthesize(result, intent, context) {
     }
   }
 
-  // Build message objects — attach images to the last text message
-  for (let i = 0; i < parts.length; i++) {
-    const isLast = i === parts.length - 1;
-    const msg = { content: parts[i] };
-    if (isLast && imageFiles.length > 0) {
-      msg.files = imageFiles;
+  const hasImages = imageFiles.length > 0;
+
+  if (hasImages && parts.length > 0) {
+    // Multi-message: text first, then images with delay (feels natural)
+    for (const part of parts) {
+      messages.push({ content: part, files: [], delayMs: 0 });
     }
-    messages.push(msg);
+    // Send images as a separate follow-up message
+    messages.push({ content: null, files: imageFiles, delayMs: 500 });
+  } else if (parts.length > 0) {
+    // Text only — send all parts
+    for (const part of parts) {
+      messages.push({ content: part, files: [], delayMs: 0 });
+    }
+  } else if (hasImages) {
+    // Images only
+    messages.push({ content: null, files: imageFiles, delayMs: 0 });
   }
 
-  // If no text but has images, send images alone
-  if (parts.length === 0 && imageFiles.length > 0) {
-    messages.push({ content: null, files: imageFiles });
+  // Add follow-up messages from result if any
+  if (result.followUps && Array.isArray(result.followUps)) {
+    for (const followUp of result.followUps) {
+      messages.push({
+        content: followUp.content || null,
+        files: followUp.files || [],
+        delayMs: followUp.delayMs || 1000,
+      });
+    }
   }
 
   return {

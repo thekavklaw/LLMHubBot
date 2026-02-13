@@ -1,4 +1,5 @@
 const logger = require('../../logger');
+const { withRetry } = require('../../utils/retry');
 
 module.exports = {
   name: 'tavily_search',
@@ -18,7 +19,7 @@ module.exports = {
       throw new Error('TAVILY_API_KEY not configured');
     }
 
-    const res = await fetch('https://api.tavily.com/search', {
+    const res = await withRetry(() => fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -28,7 +29,7 @@ module.exports = {
         include_answer: args.include_answer !== false,
         max_results: 5,
       }),
-    });
+    }), { label: 'tavily-search' });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

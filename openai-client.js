@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const { searchWeb } = require('./tools/webSearch');
 const logger = require('./logger');
+const { withRetry } = require('./utils/retry');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -40,7 +41,7 @@ async function generateResponse(messages, config = {}) {
       params.tool_choice = 'auto';
     }
 
-    let completion = await openai.chat.completions.create(params);
+    let completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion' });
     let responseMsg = completion.choices[0]?.message;
 
     // Handle tool calls (max 3 iterations)
@@ -65,7 +66,7 @@ async function generateResponse(messages, config = {}) {
         }
       }
 
-      completion = await openai.chat.completions.create(params);
+      completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion-tool-followup' });
       responseMsg = completion.choices[0]?.message;
     }
 
@@ -87,12 +88,12 @@ async function generateResponse(messages, config = {}) {
  * @returns {Buffer} image buffer
  */
 async function generateImage(prompt, size = '1024x1024') {
-  const response = await openai.images.generate({
+  const response = await withRetry(() => openai.images.generate({
     model: 'gpt-image-1',
     prompt,
     size,
     n: 1,
-  });
+  }), { label: 'image-generation' });
 
   // gpt-image-1 returns base64 by default
   const imageData = response.data[0];
@@ -114,13 +115,13 @@ async function generateImage(prompt, size = '1024x1024') {
  * @returns {string} raw response text
  */
 async function thinkWithModel(messages, model = 'gpt-4.1-mini') {
-  const completion = await openai.chat.completions.create({
+  const completion = await withRetry(() => openai.chat.completions.create({
     model,
     messages,
     temperature: 0.2,
     max_completion_tokens: 300,
     response_format: { type: 'json_object' },
-  });
+  }), { label: 'think-model' });
   return completion.choices[0]?.message?.content || '';
 }
 
@@ -145,7 +146,7 @@ async function createChatCompletion(messages, tools = [], opts = {}) {
     params.tool_choice = 'auto';
   }
 
-  const completion = await openai.chat.completions.create(params);
+  const completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion-raw' });
   const msg = completion.choices[0]?.message;
   return {
     content: msg?.content || '',

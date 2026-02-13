@@ -1,4 +1,5 @@
 const logger = require('../../logger');
+const { withRetry } = require('../../utils/retry');
 
 module.exports = {
   name: 'brave_search',
@@ -19,13 +20,13 @@ module.exports = {
 
     const count = Math.min(10, Math.max(1, args.count || 5));
     const params = new URLSearchParams({ q: args.query, count: String(count) });
-    const res = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+    const res = await withRetry(() => fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
       headers: {
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip',
         'X-Subscription-Token': apiKey,
       },
-    });
+    }), { label: 'brave-search' });
 
     if (!res.ok) {
       throw new Error(`Brave API error: ${res.status}`);

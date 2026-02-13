@@ -68,7 +68,7 @@ async function checkTokenBudget(channelId) {
 
   try {
     const summary = await generateResponse([
-      { role: 'system', content: `Summarize this conversation concisely in 2-3 sentences. Include key topics, decisions, and who said what.${prevSummary}` },
+      { role: 'system', content: `Summarize this conversation concisely in 2-3 sentences. IMPORTANT: Preserve key facts, specific user names, and any decisions or preferences mentioned. Include a "highlights" note if anything particularly notable happened (e.g., user asked for help, shared a preference, a tool was used).${prevSummary}` },
       { role: 'user', content: oldText },
     ], { model: config.miniModel || 'gpt-4.1-mini', maxTokens: 300, temperature: 0.3, tools: false });
 

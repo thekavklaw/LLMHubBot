@@ -1,5 +1,6 @@
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
+const { withRetry } = require('../utils/retry');
 const { storeMemory } = require('../memory');
 const { appendUserNotes } = require('../users');
 const { reflectAndUpdate } = require('../soul');
@@ -23,7 +24,7 @@ async function reflect(message, response, context) {
   try {
     const intentModel = process.env.INTENT_MODEL || 'gpt-4.1-mini';
 
-    const result = await thinkWithModel([
+    const result = await withRetry(() => thinkWithModel([
       {
         role: 'system',
         content: `Extract learnings from this bot conversation. Return JSON:
@@ -39,7 +40,7 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
         role: 'user',
         content: `User ${userName}: "${content.slice(0, 300)}"\nBot response: "${responseText.slice(0, 300)}"${response.toolsUsed?.length ? `\nTools used: ${response.toolsUsed.join(', ')}` : ''}`,
       },
-    ], intentModel);
+    ], intentModel), { label: 'reflection', maxRetries: 2 });
 
     const parsed = JSON.parse(result);
 

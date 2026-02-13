@@ -494,6 +494,229 @@ async function test(name, fn) {
     assert.ok(ts.length > 10);
   });
 
+  // ──────────── RETRY TESTS ────────────
+  const { withRetry } = require('../utils/retry');
+
+  await test('Retry: succeeds on first try', async () => {
+    let calls = 0;
+    const result = await withRetry(() => { calls++; return 'ok'; }, { label: 'test' });
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(calls, 1);
+  });
+
+  await test('Retry: retries on failure then succeeds', async () => {
+    let calls = 0;
+    const result = await withRetry(() => {
+      calls++;
+      if (calls < 3) throw new Error('transient');
+      return 'recovered';
+    }, { label: 'test', backoffMs: 10 });
+    assert.strictEqual(result, 'recovered');
+    assert.strictEqual(calls, 3);
+  });
+
+  await test('Retry: respects maxRetries', async () => {
+    let calls = 0;
+    try {
+      await withRetry(() => { calls++; throw new Error('always fails'); }, { label: 'test', maxRetries: 2, backoffMs: 10 });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(err.message, 'always fails');
+      assert.strictEqual(calls, 2);
+    }
+  });
+
+  await test('Retry: does not retry on 400 errors', async () => {
+    let calls = 0;
+    try {
+      await withRetry(() => {
+        calls++;
+        const err = new Error('Bad request');
+        err.status = 400;
+        throw err;
+      }, { label: 'test', backoffMs: 10 });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(err.status, 400);
+      assert.strictEqual(calls, 1); // No retry
+    }
+  });
+
+  await test('Retry: does not retry on 404 errors', async () => {
+    let calls = 0;
+    try {
+      await withRetry(() => {
+        calls++;
+        const err = new Error('Not found');
+        err.status = 404;
+        throw err;
+      }, { label: 'test', backoffMs: 10 });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(calls, 1);
+    }
+  });
+
+  await test('Retry: retries on 429 rate limit', async () => {
+    let calls = 0;
+    const result = await withRetry(() => {
+      calls++;
+      if (calls < 2) {
+        const err = new Error('Rate limited');
+        err.status = 429;
+        throw err;
+      }
+      return 'ok';
+    }, { label: 'test', backoffMs: 10 });
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(calls, 2);
+  });
+
+  await test('Retry: retries on 500 server errors', async () => {
+    let calls = 0;
+    const result = await withRetry(() => {
+      calls++;
+      if (calls < 2) {
+        const err = new Error('Server error');
+        err.status = 500;
+        throw err;
+      }
+      return 'ok';
+    }, { label: 'test', backoffMs: 10 });
+    assert.strictEqual(result, 'ok');
+    assert.ok(calls >= 2);
+  });
+
+  await test('Retry: respects retryOn filter', async () => {
+    let calls = 0;
+    try {
+      await withRetry(() => {
+        calls++;
+        throw new Error('custom error');
+      }, { label: 'test', backoffMs: 10, retryOn: (err) => err.message === 'retryable' });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(calls, 1); // retryOn returned false, no retry
+    }
+  });
+
+  // ──────────── MULTI-MESSAGE SYNTHESIS TESTS ────────────
+
+  await test('Layer4: multi-message with images sends text then images', async () => {
+    const { AttachmentBuilder } = require('discord.js');
+    const result = {
+      text: 'Here is your image!',
+      toolsUsed: ['generate_image'],
+      iterations: 2,
+      images: [{ image_buffer: Buffer.from('fake').toString('base64') }],
+    };
+    const resp = await synthesize(result, { intent: 'image_request' }, { userId: 'u1' });
+    assert.strictEqual(resp.action, 'respond');
+    assert.ok(resp.messages.length >= 2); // text + image
+    // First message should be text
+    assert.strictEqual(resp.messages[0].content, 'Here is your image!');
+    // Last message should have files and delay
+    const imgMsg = resp.messages[resp.messages.length - 1];
+    assert.ok(imgMsg.files.length > 0);
+    assert.strictEqual(imgMsg.delayMs, 500);
+  });
+
+  await test('Layer4: follow-up messages are included', async () => {
+    const result = {
+      text: 'Main response.',
+      toolsUsed: [],
+      iterations: 1,
+      images: [],
+      followUps: [{ content: 'By the way...', delayMs: 1500 }],
+    };
+    const resp = await synthesize(result, {}, { userId: 'u1' });
+    assert.strictEqual(resp.messages.length, 2);
+    assert.strictEqual(resp.messages[1].content, 'By the way...');
+    assert.strictEqual(resp.messages[1].delayMs, 1500);
+  });
+
+  await test('Layer4: text-only returns messages without delay', async () => {
+    const result = { text: 'Just text.', toolsUsed: [], iterations: 1, images: [] };
+    const resp = await synthesize(result, {}, { userId: 'u1' });
+    assert.strictEqual(resp.messages.length, 1);
+    assert.strictEqual(resp.messages[0].delayMs, 0);
+  });
+
+  // ──────────── ORCHESTRATOR FALLBACK TESTS ────────────
+
+  await test('Orchestrator: intent failure uses defaults', async () => {
+    const ThinkingOrchestrator = require('../thinking/orchestrator');
+    const mockRegistry = {
+      getToolsForOpenAI: () => [],
+      listTools: () => [{ name: 'test', description: 't' }],
+    };
+    const mockAgentLoop = {
+      run: async () => ({ text: 'Fallback response.', toolsUsed: [], iterations: 1, images: [] }),
+    };
+    const orch = new ThinkingOrchestrator({
+      toolRegistry: mockRegistry,
+      agentLoop: mockAgentLoop,
+      config: { agentLoopTimeout: 5000 },
+    });
+
+    // This test verifies the orchestrator doesn't crash when intent analysis would fail
+    // (in production it catches the error and uses defaults)
+    const result = await orch.process(
+      { content: 'test message for fallback' },
+      { userId: 'u1', userName: 'Tester', channelId: 'ch1', botId: '123',
+        inThread: true, mentionsBot: false, repliesToBot: false, gptChannelId: 'ch1', displayName: 'Tester' }
+    );
+    assert.strictEqual(result.action, 'respond');
+  });
+
+  // ──────────── MEMORY MANAGEMENT TESTS ────────────
+  const { cosineSimilarity, float32ToBuffer, bufferToFloat32, LRUCache: MemLRU } = require('../memory');
+
+  await test('Memory: cosine similarity of identical vectors = 1', () => {
+    const a = new Float32Array([1, 0, 0]);
+    const b = new Float32Array([1, 0, 0]);
+    assert.strictEqual(cosineSimilarity(a, b), 1);
+  });
+
+  await test('Memory: cosine similarity of orthogonal vectors = 0', () => {
+    const a = new Float32Array([1, 0, 0]);
+    const b = new Float32Array([0, 1, 0]);
+    const sim = cosineSimilarity(a, b);
+    assert.ok(Math.abs(sim) < 0.001);
+  });
+
+  await test('Memory: float32 roundtrip through buffer', () => {
+    const original = new Float32Array([1.5, -2.3, 0.001, 999.99]);
+    const buf = float32ToBuffer(original);
+    const restored = bufferToFloat32(buf);
+    assert.strictEqual(restored.length, original.length);
+    for (let i = 0; i < original.length; i++) {
+      assert.ok(Math.abs(restored[i] - original[i]) < 0.001);
+    }
+  });
+
+  await test('Memory: LRU cache evicts oldest', () => {
+    const cache = new MemLRU(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.set('d', 4); // Should evict 'a'
+    assert.strictEqual(cache.get('a'), undefined);
+    assert.strictEqual(cache.get('d'), 4);
+    assert.strictEqual(cache.size, 3);
+  });
+
+  await test('Memory: LRU cache refreshes on get', () => {
+    const cache = new MemLRU(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.get('a'); // refresh 'a'
+    cache.set('d', 4); // Should evict 'b' (oldest non-refreshed)
+    assert.strictEqual(cache.get('a'), 1);
+    assert.strictEqual(cache.get('b'), undefined);
+  });
+
   // ──────────── SUMMARY ────────────
   console.log('\n' + results.join('\n'));
   console.log(`\n=== Agentic Tests: ${passed} passed, ${failed} failed ===\n`);

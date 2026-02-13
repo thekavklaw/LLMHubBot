@@ -243,9 +243,25 @@ async function handleMessage(message) {
         addMessage(channelId, 'assistant', orchestratorResult.text || '[image]');
         logMessage(channelId, null, 'LLMHub', 'assistant', orchestratorResult.text || '[image]');
 
-        // Send Discord messages
+        // Send Discord messages (multi-message with delays)
         for (const msg of orchestratorResult.messages || []) {
-          await message.channel.send(msg);
+          try {
+            if (msg.delayMs && msg.delayMs > 0) {
+              await message.channel.sendTyping().catch(() => {});
+              await new Promise(r => setTimeout(r, msg.delayMs));
+            }
+            // Build send payload (strip delayMs)
+            const payload = {};
+            if (msg.content) payload.content = msg.content;
+            if (msg.files && msg.files.length > 0) payload.files = msg.files;
+            if (msg.embeds && msg.embeds.length > 0) payload.embeds = msg.embeds;
+            if (payload.content || payload.files || payload.embeds) {
+              await message.channel.send(payload);
+            }
+          } catch (sendErr) {
+            logger.error('MessageHandler', `Failed to send message part: ${sendErr.message}`);
+            // Continue sending remaining messages
+          }
         }
         const responsePreview = (orchestratorResult.text || '[image]').slice(0, 80);
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);

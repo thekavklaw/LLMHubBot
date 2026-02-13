@@ -1,6 +1,7 @@
 const logger = require('../../logger');
 const config = require('../../config');
 const OpenAI = require('openai');
+const { withRetry } = require('../../utils/retry');
 
 // SSRF protection: block private/internal IPs
 const BLOCKED_PATTERNS = [
@@ -41,11 +42,11 @@ module.exports = {
     const timeout = setTimeout(() => controller.abort(), 10000);
     let res;
     try {
-      res = await fetch(url, {
+      res = await withRetry(() => fetch(url, {
         signal: controller.signal,
         headers: { 'User-Agent': 'LLMHub-Bot/1.0 (summarizer)' },
         redirect: 'follow',
-      });
+      }), { label: 'summarize-url-fetch', maxRetries: 2 });
     } finally {
       clearTimeout(timeout);
     }

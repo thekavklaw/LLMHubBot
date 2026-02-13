@@ -1,5 +1,6 @@
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
+const { withRetry } = require('../utils/retry');
 const { searchMemory } = require('../memory');
 const { getProfile, formatProfileForPrompt } = require('../users');
 
@@ -36,7 +37,7 @@ async function analyzeIntent(message, context, gate) {
   const intentModel = process.env.INTENT_MODEL || 'gpt-4.1-mini';
 
   try {
-    const result = await thinkWithModel([
+    const result = await withRetry(() => thinkWithModel([
       {
         role: 'system',
         content: `Analyze user intent for a Discord AI bot response. Available tools:\n${toolNames || 'none'}\n\nReturn JSON:
@@ -53,7 +54,7 @@ async function analyzeIntent(message, context, gate) {
         role: 'user',
         content: `User: ${userName}\n${profileStr ? `Profile: ${profileStr}\n` : ''}${memoriesStr ? `Memories:\n${memoriesStr}\n` : ''}Message: "${content.slice(0, 500)}"`,
       },
-    ], intentModel);
+    ], intentModel), { label: 'intent-analysis', maxRetries: 2 });
 
     const parsed = JSON.parse(result);
 

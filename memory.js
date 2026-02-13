@@ -1,7 +1,8 @@
 const OpenAI = require('openai');
-const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories } = require('./db');
+const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories } = require('./db');
 const logger = require('./logger');
 const config = require('./config');
+const { withRetry } = require('./utils/retry');
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
@@ -37,10 +38,10 @@ async function getEmbedding(text) {
   const cached = embeddingCache.get(key);
   if (cached) return cached;
 
-  const res = await openai.embeddings.create({
+  const res = await withRetry(() => openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: text.slice(0, 8000),
-  });
+  }), { label: 'embedding' });
   const embedding = new Float32Array(res.data[0].embedding);
   embeddingCache.set(key, embedding);
   return embedding;
@@ -68,17 +69,70 @@ function cosineSimilarity(a, b) {
   return denom === 0 ? 0 : dot / denom;
 }
 
+/**
+ * Prune memories older than maxAge (default 90 days).
+ */
+function pruneByAge(maxAge = 90 * 24 * 60 * 60 * 1000) {
+  try {
+    const mems = getRecentMemories(365); // get all within a year
+    let pruned = 0;
+    const cutoff = Date.now() - maxAge;
+    for (const mem of mems) {
+      const ts = new Date(mem.timestamp).getTime();
+      if (ts < cutoff) {
+        pruned++;
+      }
+    }
+    if (pruned > 0) {
+      dbPruneOldMemories(pruned);
+      logger.info('Memory', `Age-pruned ${pruned} memories older than ${Math.round(maxAge / 86400000)}d`);
+    }
+    return pruned;
+  } catch (err) {
+    logger.error('Memory', 'Age prune error:', err);
+    return 0;
+  }
+}
+
+/**
+ * Check for duplicate memory (cosine similarity > 0.95).
+ * Returns true if a near-duplicate exists.
+ */
+async function isDuplicate(embedding, threshold = 0.95) {
+  try {
+    const recent = getRecentMemories(7); // check last week
+    for (const mem of recent) {
+      if (!mem.embedding) continue;
+      const memEmb = bufferToFloat32(mem.embedding);
+      const sim = cosineSimilarity(embedding, memEmb);
+      if (sim > threshold) return true;
+    }
+    return false;
+  } catch (err) {
+    logger.error('Memory', 'Dedup check error:', err);
+    return false;
+  }
+}
+
 async function storeMemory(content, meta = {}) {
   try {
-    // Prune if over limit
+    // Prune if over limit (10k cap)
     const count = getMemoryCount();
-    if (count > config.memoryMaxRows) {
-      const toDelete = Math.floor(count * config.memoryPrunePercent);
-      pruneOldMemories(toDelete);
-      logger.info('Memory', `Pruned ${toDelete} old memories (was ${count})`);
+    const maxMemories = config.memoryMaxRows || 10000;
+    if (count > maxMemories) {
+      const toDelete = Math.max(Math.floor(count * (config.memoryPrunePercent || 0.1)), count - maxMemories + 100);
+      dbPruneOldMemories(toDelete);
+      logger.info('Memory', `Pruned ${toDelete} old memories (was ${count}, cap ${maxMemories})`);
     }
 
     const embedding = await getEmbedding(content);
+
+    // Deduplication check
+    if (await isDuplicate(embedding)) {
+      logger.debug('Memory', `Skipped duplicate: "${content.slice(0, 60)}..."`);
+      return;
+    }
+
     const embeddingBuf = float32ToBuffer(embedding);
     insertMemory(
       content, embeddingBuf,
@@ -104,9 +158,13 @@ async function searchMemory(query, limit = 5, minSimilarity = 0.7) {
       const memEmbedding = bufferToFloat32(mem.embedding);
       const sim = cosineSimilarity(queryEmbedding, memEmbedding);
       if (sim >= minSimilarity) {
+        // Relevance decay: weight recent memories higher
+        const daysSinceCreated = (Date.now() - new Date(mem.timestamp).getTime()) / 86400000;
+        const decayedScore = sim * (1 / (1 + daysSinceCreated * 0.01));
         scored.push({
           content: mem.content,
           similarity: sim,
+          decayedScore,
           category: mem.category,
           userId: mem.user_id,
           userName: mem.user_name,
@@ -116,7 +174,7 @@ async function searchMemory(query, limit = 5, minSimilarity = 0.7) {
       }
     }
 
-    scored.sort((a, b) => b.similarity - a.similarity);
+    scored.sort((a, b) => b.decayedScore - a.decayedScore);
     return scored.slice(0, limit);
   } catch (err) {
     logger.error('Memory', 'Search error:', err);
@@ -169,4 +227,4 @@ Return ONLY a valid JSON array, nothing else.`
   }
 }
 
-module.exports = { storeMemory, searchMemory, extractFacts, getEmbedding, LRUCache };
+module.exports = { storeMemory, searchMemory, extractFacts, getEmbedding, LRUCache, pruneByAge, isDuplicate, cosineSimilarity, float32ToBuffer, bufferToFloat32 };

@@ -1,4 +1,5 @@
 const logger = require('../../logger');
+const { withRetry } = require('../../utils/retry');
 
 module.exports = {
   name: 'define_word',
@@ -12,9 +13,9 @@ module.exports = {
   },
   async execute(args) {
     const word = encodeURIComponent(args.word.trim().toLowerCase());
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, {
+    const res = await withRetry(() => fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, {
       signal: AbortSignal.timeout(10000),
-    });
+    }), { label: 'define-word' });
 
     if (!res.ok) {
       if (res.status === 404) return { word: args.word, found: false, message: 'Word not found in dictionary.' };

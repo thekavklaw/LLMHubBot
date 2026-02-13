@@ -75,8 +75,27 @@ class ThinkingOrchestrator {
       result = await execute(message, fullContext, intent);
       logger.info('Orchestrator', `Layer 3 (Execute): ${result.toolsUsed.length} tools, ${result.iterations} iterations, time=${Date.now() - l3Start}ms`);
     } catch (err) {
-      logger.error('Orchestrator', 'Layer 3 (Execute) failed:', { error: err.message, stack: err.stack });
-      return { action: 'ignore', reason: 'Execution error', messages: [], images: [] };
+      logger.error('Orchestrator', 'Layer 3 (Execute) failed, falling back to direct response:', { error: err.message, stack: err.stack });
+      // Fallback: try direct GPT response without tools
+      try {
+        const { generateResponse } = require('../openai-client');
+        const { getContext } = require('../context');
+        const { getSystemPrompt } = require('../soul');
+        const systemPrompt = await getSystemPrompt(context.channelId, context.userId, message.content);
+        const contextMsgs = getContext(context.channelId);
+        const text = await generateResponse(
+          [{ role: 'system', content: systemPrompt }, ...contextMsgs],
+          { tools: false, maxTokens: 1000 }
+        );
+        result = { text, toolsUsed: [], iterations: 0, images: [] };
+      } catch (fallbackErr) {
+        logger.error('Orchestrator', 'Layer 3 fallback also failed:', { error: fallbackErr.message });
+        return {
+          action: 'respond',
+          messages: [{ content: "I'm having trouble connecting right now — try again in a moment! 🔄" }],
+          images: [], text: '', toolsUsed: [],
+        };
+      }
     }
 
     // Layer 4: Response Synthesis
@@ -86,8 +105,20 @@ class ThinkingOrchestrator {
       response = await synthesize(result, intent, fullContext);
       logger.info('Orchestrator', `Layer 4 (Synthesize): action=${response.action}, messages=${(response.messages || []).length}, time=${Date.now() - l4Start}ms`);
     } catch (err) {
-      logger.error('Orchestrator', 'Layer 4 (Synthesize) failed:', { error: err.message, stack: err.stack });
-      return { action: 'ignore', reason: 'Synthesis error', messages: [], images: [] };
+      logger.error('Orchestrator', 'Layer 4 (Synthesize) failed, sending raw text:', { error: err.message, stack: err.stack });
+      // Fallback: send raw text without formatting
+      if (result && result.text) {
+        const rawParts = result.text.match(/[\s\S]{1,2000}/g) || [];
+        response = {
+          action: 'respond',
+          messages: rawParts.map(p => ({ content: p })),
+          images: result.images || [],
+          text: result.text,
+          toolsUsed: result.toolsUsed || [],
+        };
+      } else {
+        return { action: 'ignore', reason: 'Synthesis error with no text', messages: [], images: [] };
+      }
     }
 
     // Layer 5: Reflection (async, non-blocking)

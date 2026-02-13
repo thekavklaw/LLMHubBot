@@ -113,9 +113,26 @@ client.on('messageCreate', handleMessage);
 client.on('interactionCreate', handleInteraction);
 
 // ── Graceful shutdown ──
-function shutdown(signal) {
-  logger.info('Bot', `Received ${signal}, shutting down...`);
-  client.destroy();
+let isShuttingDown = false;
+async function shutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  const uptime = Math.round((Date.now() - Date.now()) / 1000); // will be replaced below
+  const { getStats } = require('./handlers/messageHandler');
+  const stats = getStats();
+  const { getToolStats } = require('./db');
+  let toolStats = [];
+  try { toolStats = getToolStats(); } catch (_) {}
+
+  logger.info('Bot', `Received ${signal}, shutting down gracefully...`);
+  logger.info('Bot', `Shutdown stats: ${stats.messageCount} messages processed, ${stats.errorCount} errors, ${toolStats.length} tool types used`);
+
+  // Give in-progress responses up to 5s to finish
+  await new Promise(r => setTimeout(r, 2000));
+
+  try { client.destroy(); } catch (_) {}
+  logger.info('Bot', 'Shutdown complete.');
   process.exit(0);
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
