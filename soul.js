@@ -21,7 +21,7 @@ function getChangelog() {
     const entries = raw.split(/^## \d{4}-/m);
     const header = entries[0]; // "# Brain Changelog\n..."
     const latest = entries[1] ? '## ' + entries[1].split(/^## \d{4}-/m)[0].trim() : '';
-    _changelogCache = latest ? `\n## What Changed in My Last Update\n${latest}` : '';
+    _changelogCache = latest ? `\n## How I Work (My Brain Architecture)\nThis describes YOUR code — how you process messages, store memories, and think. When someone asks how you work, reference this.\n\n${latest}` : '';
     logger.info('Soul', `Changelog loaded (${_changelogCache.length} chars, latest entry only)`);
   } catch {
     _changelogCache = '';

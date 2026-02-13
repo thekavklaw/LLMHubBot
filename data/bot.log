@@ -14046,3 +14046,64 @@ Best format so I can actually use it" (469 chars)
 [2026-02-13 20:45:16] [INFO] [Bot] Slash commands registered
 [2026-02-13 20:45:16] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 20:45:16] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 20:57:33] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 20:57:36] [INFO] [Context] Lazy-loaded 34 messages for channel 1471696285433204940
+[2026-02-13 20:57:36] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "Youve just been upgraded, see if you can understand your memory systems and chan"
+[2026-02-13 20:57:36] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 20:57:36] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Question in #gpt channel", confidence=0.8, time=3ms
+[2026-02-13 20:57:37] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 20:57:37] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=572ms
+[2026-02-13 20:57:37] [INFO] [Soul] Changelog loaded (2740 chars, latest entry only)
+[2026-02-13 20:57:38] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 20:57:39] [INFO] [AgentLoop] Iteration 1/10: 1 tool calls
+[2026-02-13 20:57:39] [INFO] [AgentLoop] Tool call #1: recall({"query":"changelog memory upgrade llmhub","limit":5})
+[2026-02-13 20:57:39] [INFO] [ToolRegistry] Tool recall completed in 158ms, success=true
+[2026-02-13 20:57:39] [INFO] [AgentLoop] Tool call #1: recall → success in 158ms
+[2026-02-13 20:57:46] [INFO] [Execute] Agent loop completed in 2 iterations, 1 tools used
+[2026-02-13 20:57:46] [INFO] [Orchestrator] Layer 3 (Execute): 1 tools, 2 iterations, time=9058ms
+[2026-02-13 20:57:46] [INFO] [Synthesize] Output: 1 message(s), total 950 chars, 0 image(s)
+[2026-02-13 20:57:46] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=1ms
+[2026-02-13 20:57:46] [INFO] [Orchestrator] Total thinking pipeline: 9636ms
+[2026-02-13 20:57:46] [INFO] [MessageDelete] Message 1471973616819109928 deleted from 1471696285433204940
+[2026-02-13 20:57:47] [INFO] [MessageHandler] Response sent to 1471696285433204940: "I can introspect what I’m *connected to*, not what you *intended* to upgrade 😄
+" (950 chars)
+[2026-02-13 20:57:49] [INFO] [Reflect] Extracted: 2 insights, sig=0.70, topics=3, memory=no
+[2026-02-13 20:58:48] [INFO] [Soul] Changelog loaded (2740 chars, latest entry only)
+[2026-02-13 20:58:48] [ERROR] [Memory] Search error: Error: 401 Incorrect API key provided: test. You can find your API key at https://platform.openai.com/account/api-keys.
+    at APIError.generate (/opt/llmhub-bot/node_modules/openai/error.js:48:20)
+    at OpenAI.makeStatusError (/opt/llmhub-bot/node_modules/openai/core.js:302:33)
+    at OpenAI.makeRequest (/opt/llmhub-bot/node_modules/openai/core.js:346:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async withRetry (/opt/llmhub-bot/utils/retry.js:24:14)
+    at async getEmbedding (/opt/llmhub-bot/memory.js:50:15)
+    at async searchMemory (/opt/llmhub-bot/memory.js:197:28)
+    at async Object.getSystemPrompt (/opt/llmhub-bot/soul.js:49:63)
+[2026-02-13 20:59:52] [INFO] [Bot] Received SIGTERM, shutting down gracefully... Uptime: 876s
+[2026-02-13 20:59:52] [INFO] [Bot] Shutdown stats: 1 messages processed, 0 errors, 39 tool types used
+[2026-02-13 20:59:57] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 20:59:57] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 20:59:57] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 20:59:57] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 20:59:58] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 20:59:58] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 20:59:58] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 20:59:58] [INFO] [Health] Health server listening on http://127.0.0.1:3870/health
+[2026-02-13 20:59:58] [INFO] [Bot] Slash commands registered
+[2026-02-13 20:59:58] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 20:59:58] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
