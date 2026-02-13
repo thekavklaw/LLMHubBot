@@ -11,7 +11,7 @@ module.exports = {
     },
     required: ['query'],
   },
-  async execute(args) {
+  async execute(args, context) {
     const limit = Math.min(20, Math.max(1, args.limit || 5));
     const results = await searchMemory(args.query, limit, 0.65, context?.guildId);
     if (!results || results.length === 0) {
