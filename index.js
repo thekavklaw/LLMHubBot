@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('./soul');
 const { generateResponse } = require('./openai-client');
@@ -9,6 +11,41 @@ const { createChatThread } = require('./threads');
 const { shouldRespond } = require('./relevance');
 const { storeMemory, extractFacts } = require('./memory');
 const { trackUser, updateProfilesFromFacts } = require('./users');
+const { checkMessage, checkOutput } = require('./moderator');
+const { checkRateLimit } = require('./ratelimiter');
+
+// ── Error logging ──
+const ERROR_LOG = path.join(__dirname, 'data', 'error.log');
+fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+
+function logError(label, err) {
+  const line = `[${new Date().toISOString()}] [${label}] ${err.stack || err.message || err}\n`;
+  console.error(line.trim());
+  try { fs.appendFileSync(ERROR_LOG, line); } catch (_) {}
+}
+
+// ── Global error handlers ──
+process.on('unhandledRejection', (reason) => {
+  logError('UnhandledRejection', reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+process.on('uncaughtException', (err) => {
+  logError('UncaughtException', err);
+  process.exit(1);
+});
+
+// ── Health tracking ──
+const startTime = Date.now();
+let messageCount = 0;
+let errorCount = 0;
+
+function updateHealth() {
+  try {
+    setState('uptime_since', new Date(startTime).toISOString());
+    setState('message_count', String(messageCount));
+    setState('error_count', String(errorCount));
+  } catch (_) {}
+}
 
 const client = new Client({
   intents: [
@@ -22,29 +59,30 @@ const client = new Client({
 const GPT_CHANNEL_ID = process.env.GPT_CHANNEL_ID;
 
 // ── Message counters ──
-// Per-channel counter for fact extraction (every 15)
 const channelMsgCounts = new Map();
-// Global counter for reflection (every 50)
 let globalMsgCount = parseInt(getState('global_msg_count') || '0', 10);
 
-// Track userName -> userId mapping for fact attribution
 const userNameToId = new Map();
 
 // ── Slash command registration ──
 async function registerCommands() {
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  const chatCmd = new SlashCommandBuilder()
-    .setName('chat')
-    .setDescription('Start a conversation thread with LLMHub');
+  try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const chatCmd = new SlashCommandBuilder()
+      .setName('chat')
+      .setDescription('Start a conversation thread with LLMHub');
 
-  await rest.put(
-    Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
-    { body: [chatCmd.toJSON()] }
-  );
-  console.log('[Bot] Slash commands registered');
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
+      { body: [chatCmd.toJSON()] }
+    );
+    console.log('[Bot] Slash commands registered');
+  } catch (err) {
+    logError('CommandRegistration', err);
+  }
 }
 
-// ── Check if channel is #gpt or a thread under #gpt ──
+// ── Channel helpers ──
 function isGptChannel(channel) {
   if (channel.id === GPT_CHANNEL_ID) return true;
   if (channel.isThread() && channel.parentId === GPT_CHANNEL_ID) return true;
@@ -83,7 +121,6 @@ async function runFactExtraction(channelId) {
 
     console.log(`[Memory] Extracted ${facts.length} facts`);
 
-    // Store each fact as a memory
     for (const fact of facts) {
       const userId = fact.userName ? userNameToId.get(fact.userName) : null;
       await storeMemory(fact.content, {
@@ -94,89 +131,112 @@ async function runFactExtraction(channelId) {
       });
     }
 
-    // Update user profiles from facts
     updateProfilesFromFacts(facts, userNameToId);
   } catch (err) {
-    console.error('[Memory] Fact extraction pipeline error:', err.message);
+    logError('FactExtraction', err);
   }
 }
 
 // ── Handle messages ──
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (!isGptChannel(message.channel)) return;
-
-  const channelId = message.channel.id;
-  const userId = message.author.id;
-  const userName = message.author.username;
-  const displayName = message.member?.displayName || userName;
-
-  // Track user profile
-  trackUser(userId, userName, displayName);
-  userNameToId.set(userName, userId);
-
-  // Log & add to context (always, even if we don't respond)
-  addMessage(channelId, 'user', message.content, userName);
-  logMessage(channelId, userId, userName, 'user', message.content);
-
-  // Skip trivial messages before any processing
-  if (message.content.trim().length < 1) return;
-
-  // ── Message counters for memory pipeline ──
-  const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
-  channelMsgCounts.set(channelId, chCount);
-  globalMsgCount++;
-  setState('global_msg_count', String(globalMsgCount));
-
-  // Every 15 messages per channel: extract facts
-  if (chCount % 15 === 0) {
-    runFactExtraction(channelId).catch(err =>
-      console.error('[Memory] Background extraction error:', err.message)
-    );
-  }
-
-  // Every 50 messages globally: reflect and update soul
-  if (globalMsgCount % 50 === 0) {
-    reflectAndUpdate().catch(err =>
-      console.error('[Soul] Background reflection error:', err.message)
-    );
-  }
-
-  // Threads under #gpt: ALWAYS respond
-  const alwaysRespond = isGptThread(message.channel);
-
-  if (!alwaysRespond && message.channel.id === GPT_CHANNEL_ID) {
-    // Smart relevance check for main #gpt channel
-    const recentMessages = getRecentContextMessages(channelId);
-    const decision = await shouldRespond(message, recentMessages, client.user.id);
-    console.log(`[Relevance] ${userName}: "${message.content.slice(0, 60)}" → respond=${decision.respond} (${decision.confidence}) — ${decision.reason}`);
-
-    if (!decision.respond) return;
-  }
-
-  // Build system prompt with soul + memories + user profile
-  const config = getSoulConfig();
-  const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...getContext(channelId),
-  ];
-
   try {
-    await message.channel.sendTyping();
+    if (message.author.bot) return;
+    if (!isGptChannel(message.channel)) return;
+
+    const channelId = message.channel.id;
+    const userId = message.author.id;
+    const userName = message.author.username;
+    const displayName = message.member?.displayName || userName;
+    const inThread = isGptThread(message.channel);
+
+    // Track user profile
+    trackUser(userId, userName, displayName);
+    userNameToId.set(userName, userId);
+
+    // Log & add to context (always)
+    addMessage(channelId, 'user', message.content, userName);
+    logMessage(channelId, userId, userName, 'user', message.content);
+
+    if (message.content.trim().length < 1) return;
+
+    // ── Rate limit check ──
+    const rateResult = checkRateLimit(userId, channelId, inThread);
+    if (!rateResult.allowed) {
+      console.log(`[RateLimit] Blocked ${userName} (retry in ${rateResult.retryAfter}s)`);
+      return;
+    }
+
+    // ── Input moderation ──
+    const modResult = await checkMessage(message);
+    if (!modResult.safe) return;
+
+    // ── Message counters ──
+    messageCount++;
+    const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
+    channelMsgCounts.set(channelId, chCount);
+    globalMsgCount++;
+    setState('global_msg_count', String(globalMsgCount));
+    updateHealth();
+
+    // Every 15 messages per channel: extract facts
+    if (chCount % 15 === 0) {
+      runFactExtraction(channelId).catch(err => logError('BackgroundExtraction', err));
+    }
+
+    // Every 50 messages globally: reflect and update soul
+    if (globalMsgCount % 50 === 0) {
+      reflectAndUpdate().catch(err => logError('BackgroundReflection', err));
+    }
+
+    // Threads: always respond. Main #gpt: smart relevance check.
+    if (!inThread && message.channel.id === GPT_CHANNEL_ID) {
+      try {
+        const recentMessages = getRecentContextMessages(channelId);
+        const decision = await shouldRespond(message, recentMessages, client.user.id);
+        console.log(`[Relevance] ${userName}: "${message.content.slice(0, 60)}" → respond=${decision.respond} (${decision.confidence}) — ${decision.reason}`);
+        if (!decision.respond) return;
+      } catch (err) {
+        logError('Relevance', err);
+        // If relevance check fails, respond anyway
+      }
+    }
+
+    // Build system prompt
+    const config = getSoulConfig();
+    const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...getContext(channelId),
+    ];
+
+    try {
+      await message.channel.sendTyping();
+    } catch (_) {}
+
     const response = await generateResponse(messages, config);
+
+    // ── Output moderation ──
+    const outMod = await checkOutput(response, channelId);
+    if (!outMod.safe) {
+      console.log('[Moderator] Blocked outgoing response');
+      await message.channel.send("I generated a response but it was flagged by moderation. Let me try a different approach.").catch(() => {});
+      return;
+    }
 
     // Log assistant response
     addMessage(channelId, 'assistant', response);
     logMessage(channelId, null, 'LLMHub', 'assistant', response);
 
-    // Send (split if needed)
     for (const part of splitMessage(response)) {
       await message.channel.send(part);
     }
   } catch (err) {
-    console.error('[Bot] Error generating response:', err.message);
-    await message.channel.send("Sorry, I encountered an error. Try again in a moment.").catch(() => {});
+    errorCount++;
+    updateHealth();
+    logError('MessageHandler', err);
+    try {
+      await message.channel.send("Sorry, I encountered an error. Try again in a moment.");
+    } catch (_) {}
   }
 });
 
@@ -190,20 +250,41 @@ client.on('interactionCreate', async (interaction) => {
     const thread = await createChatThread(interaction);
     await interaction.editReply({ content: `Thread created! Head over to ${thread}` });
   } catch (err) {
-    console.error('[Bot] Error creating thread:', err.message);
-    const reply = interaction.deferred
-      ? interaction.editReply({ content: 'Sorry, I couldn\'t create a thread.' })
-      : interaction.reply({ content: 'Sorry, I couldn\'t create a thread.', ephemeral: true });
-    await reply.catch(() => {});
+    errorCount++;
+    updateHealth();
+    logError('Interaction', err);
+    try {
+      const reply = interaction.deferred
+        ? interaction.editReply({ content: 'Sorry, I couldn\'t create a thread.' })
+        : interaction.reply({ content: 'Sorry, I couldn\'t create a thread.', ephemeral: true });
+      await reply;
+    } catch (_) {}
   }
 });
+
+// ── Graceful shutdown ──
+function shutdown(signal) {
+  console.log(`[Bot] Received ${signal}, shutting down gracefully...`);
+  updateHealth();
+  client.destroy();
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // ── Start ──
 client.once('ready', () => {
   console.log(`[Bot] Logged in as ${client.user.tag}`);
-  console.log(`[Bot] Phase 3 active: Memory, Users, Soul`);
+  console.log(`[Bot] Phase 4 active: Moderation, Rate Limiting, Production Hardening`);
   console.log(`[Bot] Global message count: ${globalMsgCount}`);
+  updateHealth();
 });
 
-registerCommands().catch(err => console.error('[Bot] Command registration failed:', err.message));
-client.login(process.env.DISCORD_TOKEN);
+try {
+  registerCommands();
+  client.login(process.env.DISCORD_TOKEN);
+} catch (err) {
+  logError('Startup', err);
+  process.exit(1);
+}
