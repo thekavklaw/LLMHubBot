@@ -1,10 +1,8 @@
-const { ChannelType } = require('discord.js');
+const { ChannelType, EmbedBuilder } = require('discord.js');
+const config = require('./config');
 
-/**
- * Create a public thread in #gpt for a /chat interaction.
- */
 async function createChatThread(interaction) {
-  const gptChannel = interaction.client.channels.cache.get(process.env.GPT_CHANNEL_ID);
+  const gptChannel = interaction.client.channels.cache.get(config.gptChannelId);
   if (!gptChannel) throw new Error('GPT channel not found');
 
   const now = new Date();
@@ -17,8 +15,19 @@ async function createChatThread(interaction) {
     reason: `Chat thread created by ${interaction.user.username}`,
   });
 
-  await thread.send("Hey! I'm LLMHub — ask me anything. Others can join this thread too.");
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('💬 New Conversation')
+    .setDescription(`Hey ${interaction.member?.displayName || interaction.user.username}! I'm **LLMHub** — your AI assistant.\n\nAsk me anything about AI, LLMs, machine learning, or tech. Others can join this thread too!`)
+    .addFields(
+      { name: '🧠 Model', value: 'GPT-4o', inline: true },
+      { name: '💾 Memory', value: 'Enabled', inline: true },
+      { name: '🛡️ Moderation', value: 'Active', inline: true }
+    )
+    .setFooter({ text: 'LLMHub • Powered by OpenAI' })
+    .setTimestamp();
 
+  await thread.send({ embeds: [embed] });
   return thread;
 }
 

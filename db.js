@@ -1,11 +1,16 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
+const logger = require('./logger');
 
-const db = new Database(path.join(__dirname, 'llmhub.db'));
+const DB_PATH = path.join(__dirname, 'llmhub.db');
+const db = new Database(DB_PATH);
 
+// ── Performance pragmas ──
 db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
 
-// ── Original tables ──
+// ── Tables ──
 db.exec(`
   CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,7 +33,6 @@ db.exec(`
   )
 `);
 
-// ── Phase 3: Memory & Soul tables ──
 db.exec(`
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,31 +68,42 @@ db.exec(`
   )
 `);
 
-// ── Prepared statements: conversations ──
+// ── Indexes ──
+db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_channel ON memories(channel_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON user_profiles(last_seen)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_conversations_channel ON conversations(channel_id)`);
+
+// ── Prepared statements ──
 const insertStmt = db.prepare(
   'INSERT INTO conversations (channel_id, user_id, user_name, role, content) VALUES (?, ?, ?, ?, ?)'
 );
 const recentStmt = db.prepare(
   'SELECT role, content, user_name FROM conversations WHERE channel_id = ? ORDER BY id DESC LIMIT ?'
 );
-
-// ── Prepared statements: summaries ──
 const insertSummaryStmt = db.prepare(
   'INSERT INTO summaries (channel_id, summary, message_range) VALUES (?, ?, ?)'
 );
 const latestSummaryStmt = db.prepare(
   'SELECT summary FROM summaries WHERE channel_id = ? ORDER BY id DESC LIMIT 1'
 );
-
-// ── Prepared statements: memories ──
 const insertMemoryStmt = db.prepare(
   'INSERT INTO memories (content, embedding, user_id, user_name, channel_id, category, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );
 const allMemoriesStmt = db.prepare(
   'SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata FROM memories'
 );
-
-// ── Prepared statements: user_profiles ──
+const recentMemoriesStmt = db.prepare(
+  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata
+   FROM memories WHERE timestamp >= datetime('now', ?)
+   ORDER BY timestamp DESC`
+);
+const memoryCountStmt = db.prepare('SELECT COUNT(*) as cnt FROM memories');
+const pruneMemoriesStmt = db.prepare(
+  `DELETE FROM memories WHERE id IN (
+    SELECT id FROM memories ORDER BY timestamp ASC LIMIT ?
+  )`
+);
 const upsertProfileStmt = db.prepare(`
   INSERT INTO user_profiles (user_id, user_name, display_name, first_seen, last_seen, message_count)
   VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
@@ -99,21 +114,29 @@ const upsertProfileStmt = db.prepare(`
     message_count = message_count + 1
 `);
 const getProfileStmt = db.prepare('SELECT * FROM user_profiles WHERE user_id = ?');
-const updateNotesStmt = db.prepare(
-  'UPDATE user_profiles SET personality_notes = ? WHERE user_id = ?'
-);
-const updatePrefsStmt = db.prepare(
-  'UPDATE user_profiles SET preferences = ? WHERE user_id = ?'
-);
-const updateTopicsStmt = db.prepare(
-  'UPDATE user_profiles SET topics = ? WHERE user_id = ?'
-);
-
-// ── Prepared statements: bot_state ──
+const updateNotesStmt = db.prepare('UPDATE user_profiles SET personality_notes = ? WHERE user_id = ?');
+const updatePrefsStmt = db.prepare('UPDATE user_profiles SET preferences = ? WHERE user_id = ?');
+const updateTopicsStmt = db.prepare('UPDATE user_profiles SET topics = ? WHERE user_id = ?');
 const getStateStmt = db.prepare('SELECT value FROM bot_state WHERE key = ?');
 const setStateStmt = db.prepare(
   'INSERT INTO bot_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
 );
+
+// ── DB size monitoring ──
+function checkDbSize() {
+  try {
+    const stat = fs.statSync(DB_PATH);
+    const sizeMb = stat.size / (1024 * 1024);
+    if (sizeMb > 100) {
+      logger.warn('DB', `Database size ${sizeMb.toFixed(1)}MB exceeds 100MB threshold`);
+    }
+    return sizeMb;
+  } catch (_) { return 0; }
+}
+
+// Check on startup and every 30 min
+checkDbSize();
+setInterval(checkDbSize, 30 * 60 * 1000);
 
 // ── Functions ──
 function logMessage(channelId, userId, userName, role, content) {
@@ -133,7 +156,6 @@ function getLatestSummary(channelId) {
   return row ? row.summary : null;
 }
 
-// Memory functions
 function insertMemory(content, embedding, userId, userName, channelId, category, metadata) {
   insertMemoryStmt.run(content, embedding, userId, userName, channelId, category, metadata);
 }
@@ -142,7 +164,18 @@ function getAllMemories() {
   return allMemoriesStmt.all();
 }
 
-// User profile functions
+function getRecentMemories(days = 30) {
+  return recentMemoriesStmt.all(`-${days} days`);
+}
+
+function getMemoryCount() {
+  return memoryCountStmt.get().cnt;
+}
+
+function pruneOldMemories(count) {
+  return pruneMemoriesStmt.run(count);
+}
+
 function upsertUserProfile(userId, userName, displayName) {
   upsertProfileStmt.run(userId, userName, displayName);
 }
@@ -163,7 +196,6 @@ function updateUserTopics(userId, topics) {
   updateTopicsStmt.run(topics, userId);
 }
 
-// Bot state functions
 function getState(key) {
   const row = getStateStmt.get(key);
   return row ? row.value : null;
@@ -176,7 +208,7 @@ function setState(key, value) {
 module.exports = {
   logMessage, getRecentMessages,
   saveSummary, getLatestSummary,
-  insertMemory, getAllMemories,
+  insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories,
   upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics,
   getState, setState,
 };

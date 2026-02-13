@@ -1,48 +1,56 @@
 const { upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics } = require('./db');
+const config = require('./config');
 
-/**
- * Track a user message — creates or updates their profile.
- */
+// ── User profile cache (Map with TTL) ──
+const profileCache = new Map();
+
+function getCachedProfile(userId) {
+  const entry = profileCache.get(userId);
+  if (entry && Date.now() - entry.ts < config.userCacheTtlMs) return entry.data;
+  return null;
+}
+
+function setCachedProfile(userId, data) {
+  profileCache.set(userId, { data, ts: Date.now() });
+  // Prune cache if too large
+  if (profileCache.size > 500) {
+    const cutoff = Date.now() - config.userCacheTtlMs;
+    for (const [k, v] of profileCache) {
+      if (v.ts < cutoff) profileCache.delete(k);
+    }
+  }
+}
+
 function trackUser(userId, userName, displayName) {
   upsertUserProfile(userId, userName, displayName || userName);
+  // Invalidate cache
+  profileCache.delete(userId);
 }
 
-/**
- * Get a user's profile, or null if not found.
- */
 function getProfile(userId) {
-  return getUserProfile(userId);
+  const cached = getCachedProfile(userId);
+  if (cached) return cached;
+  const profile = getUserProfile(userId);
+  if (profile) setCachedProfile(userId, profile);
+  return profile;
 }
 
-/**
- * Append notes to a user's personality_notes field.
- * @param {string} userId
- * @param {string} newNotes - Text to append
- */
 function appendUserNotes(userId, newNotes) {
-  const profile = getUserProfile(userId);
+  const profile = getProfile(userId);
   if (!profile) return;
-
   const existing = profile.personality_notes || '';
-  // Avoid duplicates by checking if note already exists
   if (existing.includes(newNotes.trim())) return;
-
   const separator = existing ? '\n' : '';
   const timestamp = new Date().toISOString().slice(0, 10);
   updateUserNotes(userId, existing + separator + `[${timestamp}] ${newNotes.trim()}`);
+  profileCache.delete(userId);
 }
 
-/**
- * Update user notes from extracted facts.
- * @param {Array} facts - [{content, category, userName}]
- * @param {Map|object} userMap - userName -> userId mapping
- */
 function updateProfilesFromFacts(facts, userMap) {
   for (const fact of facts) {
     if (!fact.userName) continue;
     const userId = userMap instanceof Map ? userMap.get(fact.userName) : userMap[fact.userName];
     if (!userId) continue;
-
     if (fact.category === 'preference') {
       appendUserNotes(userId, `Preference: ${fact.content}`);
     } else if (fact.category === 'topic') {
@@ -53,18 +61,12 @@ function updateProfilesFromFacts(facts, userMap) {
   }
 }
 
-/**
- * Format a user profile for inclusion in system prompt.
- */
 function formatProfileForPrompt(userId) {
   const profile = getProfile(userId);
   if (!profile) return '';
-
   const parts = [];
   parts.push(`User: ${profile.display_name || profile.user_name} (${profile.message_count} messages)`);
-  if (profile.personality_notes) {
-    parts.push(`Known about them:\n${profile.personality_notes}`);
-  }
+  if (profile.personality_notes) parts.push(`Known about them:\n${profile.personality_notes}`);
   return parts.join('\n');
 }
 

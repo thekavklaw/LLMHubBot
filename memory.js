@@ -1,31 +1,55 @@
 const OpenAI = require('openai');
-const { insertMemory, getAllMemories } = require('./db');
+const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories } = require('./db');
+const logger = require('./logger');
+const config = require('./config');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
-/**
- * Get embedding vector for text using OpenAI text-embedding-3-small.
- * @param {string} text
- * @returns {Promise<Float32Array>}
- */
+// ── LRU Embedding Cache ──
+class LRUCache {
+  constructor(max) {
+    this.max = max;
+    this.cache = new Map();
+  }
+  get(key) {
+    if (!this.cache.has(key)) return undefined;
+    const val = this.cache.get(key);
+    // Move to end (most recent)
+    this.cache.delete(key);
+    this.cache.set(key, val);
+    return val;
+  }
+  set(key, val) {
+    if (this.cache.has(key)) this.cache.delete(key);
+    this.cache.set(key, val);
+    if (this.cache.size > this.max) {
+      const oldest = this.cache.keys().next().value;
+      this.cache.delete(oldest);
+    }
+  }
+  get size() { return this.cache.size; }
+}
+
+const embeddingCache = new LRUCache(config.embeddingCacheSize);
+
 async function getEmbedding(text) {
+  const key = text.slice(0, 200); // Cache key from first 200 chars
+  const cached = embeddingCache.get(key);
+  if (cached) return cached;
+
   const res = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: text.slice(0, 8000),
   });
-  return new Float32Array(res.data[0].embedding);
+  const embedding = new Float32Array(res.data[0].embedding);
+  embeddingCache.set(key, embedding);
+  return embedding;
 }
 
-/**
- * Convert Float32Array to Buffer for SQLite BLOB storage.
- */
 function float32ToBuffer(arr) {
   return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
 }
 
-/**
- * Convert Buffer back to Float32Array.
- */
 function bufferToFloat32(buf) {
   const ab = new ArrayBuffer(buf.length);
   const view = new Uint8Array(ab);
@@ -33,9 +57,6 @@ function bufferToFloat32(buf) {
   return new Float32Array(ab);
 }
 
-/**
- * Cosine similarity between two Float32Arrays.
- */
 function cosineSimilarity(a, b) {
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
@@ -47,44 +68,38 @@ function cosineSimilarity(a, b) {
   return denom === 0 ? 0 : dot / denom;
 }
 
-/**
- * Store a memory with its embedding.
- * @param {string} content - The memory content
- * @param {object} meta - { userId, userName, channelId, category, metadata }
- */
 async function storeMemory(content, meta = {}) {
   try {
+    // Prune if over limit
+    const count = getMemoryCount();
+    if (count > config.memoryMaxRows) {
+      const toDelete = Math.floor(count * config.memoryPrunePercent);
+      pruneOldMemories(toDelete);
+      logger.info('Memory', `Pruned ${toDelete} old memories (was ${count})`);
+    }
+
     const embedding = await getEmbedding(content);
     const embeddingBuf = float32ToBuffer(embedding);
     insertMemory(
-      content,
-      embeddingBuf,
-      meta.userId || null,
-      meta.userName || null,
-      meta.channelId || null,
-      meta.category || 'fact',
+      content, embeddingBuf,
+      meta.userId || null, meta.userName || null,
+      meta.channelId || null, meta.category || 'fact',
       meta.metadata ? JSON.stringify(meta.metadata) : null
     );
-    console.log(`[Memory] Stored: "${content.slice(0, 60)}..." [${meta.category || 'fact'}]`);
+    logger.debug('Memory', `Stored: "${content.slice(0, 60)}..." [${meta.category || 'fact'}]`);
   } catch (err) {
-    console.error('[Memory] Store error:', err.message);
+    logger.error('Memory', 'Store error:', err);
   }
 }
 
-/**
- * Search memories by semantic similarity.
- * @param {string} query
- * @param {number} limit
- * @param {number} minSimilarity
- * @returns {Promise<Array<{content, similarity, category, userId, userName, timestamp}>>}
- */
 async function searchMemory(query, limit = 5, minSimilarity = 0.7) {
   try {
     const queryEmbedding = await getEmbedding(query);
-    const allMems = getAllMemories();
+    // Pre-filter: last 30 days only
+    const mems = getRecentMemories(config.memorySearchDays);
 
     const scored = [];
-    for (const mem of allMems) {
+    for (const mem of mems) {
       if (!mem.embedding) continue;
       const memEmbedding = bufferToFloat32(mem.embedding);
       const sim = cosineSimilarity(queryEmbedding, memEmbedding);
@@ -104,16 +119,13 @@ async function searchMemory(query, limit = 5, minSimilarity = 0.7) {
     scored.sort((a, b) => b.similarity - a.similarity);
     return scored.slice(0, limit);
   } catch (err) {
-    console.error('[Memory] Search error:', err.message);
+    logger.error('Memory', 'Search error:', err);
     return [];
   }
 }
 
 /**
- * Extract key facts from recent messages using GPT-4o-mini.
- * @param {Array} messages - [{role, content, name}]
- * @param {string} channelId
- * @returns {Promise<Array<{content, category, userId, userName}>>}
+ * Batch extract facts from messages in one call.
  */
 async function extractFacts(messages, channelId) {
   try {
@@ -125,7 +137,7 @@ async function extractFacts(messages, channelId) {
     if (transcript.length < 20) return [];
 
     const res = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: config.miniModel,
       temperature: 0.3,
       max_tokens: 500,
       messages: [
@@ -152,9 +164,9 @@ Return ONLY a valid JSON array, nothing else.`
       userName: f.userName || null,
     }));
   } catch (err) {
-    console.error('[Memory] Extract facts error:', err.message);
+    logger.error('Memory', 'Extract facts error:', err);
     return [];
   }
 }
 
-module.exports = { storeMemory, searchMemory, extractFacts, getEmbedding };
+module.exports = { storeMemory, searchMemory, extractFacts, getEmbedding, LRUCache };

@@ -1,0 +1,7 @@
+[2026-02-13 05:17:43] [INFO] [RateLimit] User rl-block-1770959863435 hit limit in rl-blkch-1770959863435, cooldown 60s
+[2026-02-13 05:17:43] [INFO] [RateLimit] User rl-thread-1770959863437 hit limit in rl-thrch-1770959863437, cooldown 60s
+[2026-02-13 05:17:51] [INFO] [RateLimit] User rl-block-1770959871474 hit limit in rl-blkch-1770959871474, cooldown 60s
+[2026-02-13 05:17:51] [INFO] [RateLimit] User rl-thread-1770959871474 hit limit in rl-thrch-1770959871474, cooldown 60s
+[2026-02-13 05:17:55] [INFO] [Bot] Slash commands registered
+[2026-02-13 05:17:56] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 05:17:56] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
