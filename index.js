@@ -8,7 +8,7 @@
 const config = require('./config');
 const logger = require('./logger');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getState, setState } = require('./db');
+const { getState, setState, insertFeedback } = require('./db');
 const { handleMessage, setAgentLoop, setOrchestrator, modelQueue, debouncer } = require('./handlers/messageHandler');
 const { handleInteraction } = require('./handlers/interactionHandler');
 const ToolRegistry = require('./tools/registry');
@@ -33,7 +33,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
+  partials: ['MESSAGE', 'REACTION'],
 });
 
 // ── Slash commands ──
@@ -61,6 +63,12 @@ async function registerCommands() {
     const helpCmd = new SlashCommandBuilder()
       .setName('help')
       .setDescription('See everything LLMHub can do');
+    const exportCmd = new SlashCommandBuilder()
+      .setName('export')
+      .setDescription('Export the current conversation as a markdown file');
+    const statsCmd = new SlashCommandBuilder()
+      .setName('stats')
+      .setDescription('View bot statistics (admin only)');
     const settingsCmd = new SlashCommandBuilder()
       .setName('settings')
       .setDescription('Configure your LLMHub preferences')
@@ -73,7 +81,7 @@ async function registerCommands() {
       .addBooleanOption(opt => opt.setName('images').setDescription('Enable/disable image generation in responses'));
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON(), helpCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON(), helpCmd.toJSON(), exportCmd.toJSON(), statsCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {
@@ -184,6 +192,33 @@ client.on('messageDelete', async (message) => {
     logger.info('MessageDelete', `Message ${message.id} deleted from ${chId}`);
   } catch (err) {
     logger.error('MessageDelete', 'Error handling delete:', err);
+  }
+});
+
+// ── Reaction feedback (👍/👎) ──
+client.on('messageReactionAdd', async (reaction, user) => {
+  try {
+    if (user.bot) return;
+    // Fetch partial if needed
+    if (reaction.partial) {
+      try { await reaction.fetch(); } catch (_) { return; }
+    }
+    if (reaction.message.partial) {
+      try { await reaction.message.fetch(); } catch (_) { return; }
+    }
+    // Only track reactions on bot's own messages
+    if (reaction.message.author?.id !== client.user.id) return;
+
+    const emoji = reaction.emoji.name;
+    if (emoji === '👍' || emoji === '👎') {
+      insertFeedback(reaction.message.id, user.id, reaction.message.channel.id, emoji, Date.now());
+
+      if (emoji === '👎') {
+        logger.info('Feedback', `Negative feedback from ${user.tag} on message ${reaction.message.id}`);
+      }
+    }
+  } catch (err) {
+    logger.error('Feedback', 'Error handling reaction:', err);
   }
 });
 

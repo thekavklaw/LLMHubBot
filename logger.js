@@ -2,6 +2,7 @@
  * @module logger
  * @description Structured logging with file rotation. Supports debug/info/warn/error
  * levels and writes to both console and data/bot.log with automatic rotation.
+ * Uses async file writes and enforces max total log size (50MB).
  */
 
 const fs = require('fs');
@@ -9,8 +10,9 @@ const path = require('path');
 
 const LOG_DIR = path.join(__dirname, 'data');
 const LOG_FILE = path.join(LOG_DIR, 'bot.log');
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB per file
 const MAX_FILES = 3;
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total across all rotated files
 
 const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 let currentLevel = LEVELS[process.env.LOG_LEVEL || 'info'] || LEVELS.info;
@@ -36,9 +38,52 @@ function rotateIfNeeded() {
   }
 }
 
+/** Enforce max total log size by deleting oldest rotated files */
+function enforceTotalSize() {
+  try {
+    let totalSize = 0;
+    const files = [];
+    // Check main log + rotated
+    for (let i = 0; i <= MAX_FILES; i++) {
+      const f = i === 0 ? LOG_FILE : `${LOG_FILE}.${i}`;
+      try {
+        const stat = fs.statSync(f);
+        totalSize += stat.size;
+        files.push({ path: f, index: i, size: stat.size });
+      } catch (_) {}
+    }
+    if (totalSize > MAX_TOTAL_SIZE) {
+      // Delete from oldest (highest index)
+      for (let i = files.length - 1; i >= 0 && totalSize > MAX_TOTAL_SIZE; i--) {
+        try {
+          fs.unlinkSync(files[i].path);
+          totalSize -= files[i].size;
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+}
+
+// Check total size periodically (every 10 minutes)
+setInterval(enforceTotalSize, 10 * 60 * 1000);
+
 function formatTimestamp() {
   const d = new Date();
   return d.toISOString().replace('T', ' ').replace(/\.\d+Z/, '');
+}
+
+// Write buffer for async file writes
+let writeQueue = [];
+let writing = false;
+
+async function flushWrites() {
+  if (writing || writeQueue.length === 0) return;
+  writing = true;
+  const lines = writeQueue.splice(0, writeQueue.length);
+  try {
+    fs.appendFile(LOG_FILE, lines.join(''), () => {});
+  } catch (_) {}
+  writing = false;
 }
 
 function log(level, module, message, ...args) {
@@ -55,10 +100,11 @@ function log(level, module, message, ...args) {
   else if (level === 'warn') console.warn(line);
   else console.log(line);
 
-  // File output
+  // Async file output
   try {
     rotateIfNeeded();
-    fs.appendFileSync(LOG_FILE, line + '\n');
+    writeQueue.push(line + '\n');
+    setImmediate(flushWrites);
   } catch (_) {}
 }
 

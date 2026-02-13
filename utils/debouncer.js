@@ -2,6 +2,7 @@
  * @module utils/debouncer
  * @description Message debouncer that coalesces rapid messages from the same
  * user+channel into a single processing call within a configurable time window.
+ * Merges attachments from ALL messages in the batch.
  */
 class MessageDebouncer {
   constructor(windowMs = 3000) {
@@ -12,7 +13,7 @@ class MessageDebouncer {
   /**
    * Add a message. If more messages arrive within windowMs, they're batched.
    * @param {Object} message - Discord message object
-   * @param {Function} callback - (lastMessage, combinedContent) called after debounce window
+   * @param {Function} callback - (lastMessage, combinedContent, allAttachments) called after debounce window
    */
   add(message, callback) {
     const key = `${message.channel.id}:${message.author.id}`;
@@ -29,8 +30,11 @@ class MessageDebouncer {
       this.pending.delete(key);
       // Coalesce: combine all message contents into one
       const combined = batch.messages.map(m => m.content).join('\n');
+      // Merge attachments from ALL messages, not just the last one
+      const allAttachments = batch.messages.flatMap(m => m.attachments ? [...m.attachments.values()] : []);
       // Use last message as the "message" object (most recent context)
-      callback(batch.messages[batch.messages.length - 1], combined);
+      const lastMessage = batch.messages[batch.messages.length - 1];
+      callback(lastMessage, combined, allAttachments);
     }, this.windowMs);
   }
 

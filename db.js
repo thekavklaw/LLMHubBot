@@ -102,6 +102,19 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id TEXT,
+    user_id TEXT,
+    channel_id TEXT,
+    reaction TEXT,
+    timestamp INTEGER
+  )
+`);
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_message ON feedback(message_id)`);
+
 // ── Indexes ──
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp)`);
@@ -344,6 +357,25 @@ function saveUserSettings(userId, verbosity, imagesEnabled) {
   upsertUserSettingsStmt.run(userId, verbosity, imagesEnabled ? 1 : 0, Date.now());
 }
 
+// ── Feedback ──
+const insertFeedbackStmt = db.prepare(
+  'INSERT INTO feedback (message_id, user_id, channel_id, reaction, timestamp) VALUES (?, ?, ?, ?, ?)'
+);
+const feedbackStatsStmt = db.prepare('SELECT reaction, COUNT(*) as count FROM feedback GROUP BY reaction');
+const messageCountStmt = db.prepare('SELECT COUNT(*) as count FROM conversations');
+
+function insertFeedback(messageId, userId, channelId, reaction, timestamp) {
+  insertFeedbackStmt.run(messageId, userId, channelId, reaction, timestamp);
+}
+
+function getFeedbackStats() {
+  return feedbackStatsStmt.all();
+}
+
+function getMessageCount() {
+  return messageCountStmt.get();
+}
+
 function getDb() { return db; }
 function close() { try { db.close(); } catch (_) {} }
 
@@ -358,4 +390,5 @@ module.exports = {
   getDb,
   insertContext, loadContext, clearContext, updateContextByMsgId, deleteContextByMsgId, trimContext,
   getUserSettings, saveUserSettings,
+  insertFeedback, getFeedbackStats, getMessageCount,
 };

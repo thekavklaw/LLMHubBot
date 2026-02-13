@@ -6,8 +6,8 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createChatThread } = require('../threads');
 const { generateImage, thinkWithModel } = require('../openai-client');
-const { clearChannelContext } = require('../context');
-const { getUserSettings, saveUserSettings } = require('../db');
+const { clearChannelContext, getContext } = require('../context');
+const { getUserSettings, saveUserSettings, getDb, getFeedbackStats, getMessageCount } = require('../db');
 const { friendlyError } = require('../utils/errors');
 const config = require('../config');
 const logger = require('../logger');
@@ -74,7 +74,7 @@ async function handleInteraction(interaction) {
         { name: '📖 Define', value: 'Word definitions and explanations', inline: true },
         { name: '📄 Summarize', value: 'Give me a URL, I\'ll summarize it', inline: true },
         { name: '🧠 Memory', value: 'I remember our conversations and learn your preferences', inline: false },
-        { name: '⚙️ Commands', value: '`/chat` — Start a thread\n`/imagine` — Generate an image\n`/tools` — See all tools\n`/settings` — Your preferences\n`/reset` — Clear conversation\n`/help` — This message', inline: false }
+        { name: '⚙️ Commands', value: '`/chat` — Start a thread\n`/imagine` — Generate an image\n`/tools` — See all tools\n`/settings` — Your preferences\n`/reset` — Clear conversation\n`/export` — Export conversation\n`/stats` — Bot stats (admin)\n`/help` — This message', inline: false }
       )
       .setFooter({ text: 'Tip: I work best in threads — use /chat to start one!' });
     return interaction.reply({ embeds: [embed], ephemeral: true });
@@ -140,6 +140,68 @@ async function handleInteraction(interaction) {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (err) {
       logger.error('Interaction', '/settings error:', err);
+      return interaction.reply({ content: friendlyError(err), ephemeral: true });
+    }
+  }
+
+  if (interaction.commandName === 'export') {
+    try {
+      const channelId = interaction.channel.id;
+      const context = getContext(channelId);
+
+      if (!context || context.length === 0) {
+        return interaction.reply({ content: 'No conversation to export in this channel.', ephemeral: true });
+      }
+
+      let md = `# Conversation Export\n**Channel:** ${interaction.channel.name}\n**Date:** ${new Date().toISOString()}\n\n---\n\n`;
+      for (const msg of context) {
+        const role = msg.role === 'assistant' ? '🤖 LLMHub' : msg.role === 'system' ? '⚙️ System' : '👤 User';
+        const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+        md += `### ${role}\n${content}\n\n`;
+      }
+
+      const buffer = Buffer.from(md, 'utf-8');
+      const attachment = new AttachmentBuilder(buffer, { name: `conversation-${Date.now()}.md` });
+      return interaction.reply({ content: 'Here\'s your conversation export:', files: [attachment], ephemeral: true });
+    } catch (err) {
+      logger.error('Interaction', '/export error:', err);
+      return interaction.reply({ content: friendlyError(err), ephemeral: true });
+    }
+  }
+
+  if (interaction.commandName === 'stats') {
+    try {
+      if (!interaction.member.permissions.has('Administrator')) {
+        return interaction.reply({ content: 'Admin only.', ephemeral: true });
+      }
+
+      const health = await fetch('http://localhost:3870/health').then(r => r.json());
+      const db = getDb();
+      const toolStats = db.prepare('SELECT tool_name, COUNT(*) as count, AVG(execution_time_ms) as avg_time FROM tool_usage GROUP BY tool_name ORDER BY count DESC').all();
+      const feedbackStats = getFeedbackStats();
+      const messageCount = getMessageCount();
+
+      const formatUptime = (s) => {
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return `${d}d ${h}h ${m}m`;
+      };
+
+      const embed = new EmbedBuilder()
+        .setTitle('📊 LLMHub Stats')
+        .setColor(0x2ECC71)
+        .addFields(
+          { name: 'Uptime', value: formatUptime(health.uptime), inline: true },
+          { name: 'Messages Processed', value: String(messageCount?.count || 0), inline: true },
+          { name: 'Memory', value: `${Math.round(health.memory.rss / 1024 / 1024)}MB`, inline: true },
+          { name: 'Queue Depth', value: JSON.stringify(health.queues || {}), inline: false },
+          { name: 'Tool Usage', value: toolStats.map(t => `${t.tool_name}: ${t.count} (avg ${Math.round(t.avg_time)}ms)`).join('\n') || 'None', inline: false },
+          { name: 'Feedback', value: feedbackStats.map(f => `${f.reaction}: ${f.count}`).join(', ') || 'None', inline: true }
+        );
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (err) {
+      logger.error('Interaction', '/stats error:', err);
       return interaction.reply({ content: friendlyError(err), ephemeral: true });
     }
   }

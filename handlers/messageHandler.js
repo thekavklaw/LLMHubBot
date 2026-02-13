@@ -171,7 +171,7 @@ async function runFactExtraction(channelId) {
 /**
  * Core message processing (called after debounce).
  */
-async function processMessage(message, content) {
+async function processMessage(message, content, mergedAttachments) {
   try {
     const channelId = message.channel.id;
     const userId = message.author.id;
@@ -184,9 +184,10 @@ async function processMessage(message, content) {
     trackUser(userId, userName, displayName);
     userNameToId.set(userName, userId);
 
-    // Extract image attachments for vision
+    // Extract image attachments for vision (use merged attachments from debouncer if available)
     const IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
-    const imageUrls = [...message.attachments.values()]
+    const attachmentSource = mergedAttachments || [...message.attachments.values()];
+    const imageUrls = attachmentSource
       .filter(a => {
         const ext = (a.name || '').split('.').pop()?.toLowerCase();
         return IMAGE_TYPES.includes(ext) || (a.contentType && a.contentType.startsWith('image/'));
@@ -269,6 +270,12 @@ async function processMessage(message, content) {
 
       const stopTyping = startTyping(message.channel);
 
+      // "Still thinking..." message after 5s
+      let thinkingMsg = null;
+      const thinkingTimer = setTimeout(async () => {
+        try { thinkingMsg = await message.channel.send('💭 *Still thinking...*'); } catch (_) {}
+      }, 5000);
+
       try {
         const orchestratorResult = await modelQueue.enqueue(config.model, () =>
           _orchestrator.process(message, {
@@ -286,6 +293,8 @@ async function processMessage(message, content) {
         );
 
         stopTyping();
+        clearTimeout(thinkingTimer);
+        if (thinkingMsg) { try { await thinkingMsg.delete(); } catch (_) {} }
 
         // Remove backpressure emoji
         if (isQueued) {
@@ -348,6 +357,8 @@ async function processMessage(message, content) {
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
         stopTyping();
+        clearTimeout(thinkingTimer);
+        if (thinkingMsg) { try { await thinkingMsg.delete(); } catch (_) {} }
         if (isQueued) {
           try { await message.reactions.cache.get('⏳')?.users?.remove(botId); } catch (_) {}
         }
@@ -430,8 +441,8 @@ async function handleMessage(message) {
     logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);
 
     // Debounce: coalesce rapid messages from same user+channel
-    debouncer.add(message, (lastMessage, combinedContent) => {
-      processMessage(lastMessage, combinedContent).catch(err => {
+    debouncer.add(message, (lastMessage, combinedContent, allAttachments) => {
+      processMessage(lastMessage, combinedContent, allAttachments).catch(err => {
         logger.error('MessageHandler', 'Debounced processing error:', err);
       });
     });
