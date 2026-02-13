@@ -8,8 +8,10 @@ const OpenAI = require('openai');
 const { searchWeb } = require('./tools/webSearch');
 const logger = require('./logger');
 const { withRetry } = require('./utils/retry');
+const { CircuitBreaker } = require('./utils/circuit-breaker');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openaiBreaker = new CircuitBreaker('openai', { failureThreshold: 3, resetTimeout: 30000 });
 
 const SEARCH_TOOL = {
   type: 'function',
@@ -47,7 +49,7 @@ async function generateResponse(messages, config = {}) {
       params.tool_choice = 'auto';
     }
 
-    let completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion' });
+    let completion = await withRetry(() => openaiBreaker.execute(() => openai.chat.completions.create(params)), { label: 'chat-completion' });
     let responseMsg = completion.choices[0]?.message;
 
     // Handle tool calls (max 3 iterations)
@@ -72,7 +74,7 @@ async function generateResponse(messages, config = {}) {
         }
       }
 
-      completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion-tool-followup' });
+      completion = await withRetry(() => openaiBreaker.execute(() => openai.chat.completions.create(params)), { label: 'chat-completion-tool-followup' });
       responseMsg = completion.choices[0]?.message;
     }
 
@@ -121,13 +123,13 @@ async function generateImage(prompt, size = '1024x1024') {
  * @returns {string} raw response text
  */
 async function thinkWithModel(messages, model = 'gpt-4.1-mini') {
-  const completion = await withRetry(() => openai.chat.completions.create({
+  const completion = await withRetry(() => openaiBreaker.execute(() => openai.chat.completions.create({
     model,
     messages,
     temperature: 0.2,
     max_completion_tokens: 300,
     response_format: { type: 'json_object' },
-  }), { label: 'think-model' });
+  })), { label: 'think-model' });
   return completion.choices[0]?.message?.content || '';
 }
 
@@ -152,7 +154,7 @@ async function createChatCompletion(messages, tools = [], opts = {}) {
     params.tool_choice = 'auto';
   }
 
-  const completion = await withRetry(() => openai.chat.completions.create(params), { label: 'chat-completion-raw' });
+  const completion = await withRetry(() => openaiBreaker.execute(() => openai.chat.completions.create(params)), { label: 'chat-completion-raw' });
   const msg = completion.choices[0]?.message;
   return {
     content: msg?.content || '',

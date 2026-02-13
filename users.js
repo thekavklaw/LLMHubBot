@@ -1,5 +1,6 @@
 const { upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics } = require('./db');
 const config = require('./config');
+const logger = require('./logger');
 
 // ── User profile cache (Map with TTL) ──
 const profileCache = new Map();
@@ -70,4 +71,46 @@ function formatProfileForPrompt(userId) {
   return parts.join('\n');
 }
 
-module.exports = { trackUser, getProfile, appendUserNotes, updateProfilesFromFacts, formatProfileForPrompt };
+/**
+ * Consolidate user profile notes when they exceed 50 entries.
+ * Calls gpt-4.1-mini to summarize into a concise profile.
+ */
+async function consolidateUserProfile(userId, userName) {
+  const profile = getProfile(userId);
+  if (!profile || !profile.personality_notes) return;
+
+  const notes = profile.personality_notes;
+  const noteCount = notes.split('\n').filter(l => l.trim()).length;
+
+  if (noteCount < 50) return;
+
+  logger.info('Users', `Consolidating ${noteCount} notes for ${userName} (${userId})`);
+
+  try {
+    const { thinkWithModel } = require('./openai-client');
+    const { withRetry } = require('./utils/retry');
+
+    const result = await withRetry(() => thinkWithModel([
+      {
+        role: 'system',
+        content: `Summarize these personality notes about a user into a concise profile (max 500 chars). Keep only the most important and current preferences, expertise areas, and communication style. Return JSON: { "profile": "consolidated profile text" }`,
+      },
+      {
+        role: 'user',
+        content: `User: ${userName}\nNotes:\n${notes}`,
+      },
+    ], 'gpt-4.1-mini'), { label: 'profile-consolidation', maxRetries: 2 });
+
+    const parsed = JSON.parse(result);
+    if (parsed.profile && parsed.profile.length > 10) {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      updateUserNotes(userId, `[${timestamp}] [consolidated] ${parsed.profile}`);
+      profileCache.delete(userId);
+      logger.info('Users', `Consolidated ${noteCount} notes for ${userName} → ${parsed.profile.length} chars`);
+    }
+  } catch (err) {
+    logger.error('Users', `Consolidation failed for ${userName}:`, err.message);
+  }
+}
+
+module.exports = { trackUser, getProfile, appendUserNotes, updateProfilesFromFacts, formatProfileForPrompt, consolidateUserProfile };

@@ -9,6 +9,30 @@ const { getSystemPrompt } = require('../soul');
 const { getContext } = require('../context');
 
 /**
+ * Get dynamic model parameters based on intent type.
+ */
+function getModelParams(intent) {
+  switch (intent) {
+    case 'code_request': return { maxTokens: 2000, temperature: 0.3 };
+    case 'image_request': return { maxTokens: 500, temperature: 0.7 };
+    case 'creative': return { maxTokens: 2000, temperature: 0.9 };
+    case 'definition': return { maxTokens: 800, temperature: 0.5 };
+    case 'calculation': return { maxTokens: 300, temperature: 0.1 };
+    case 'correction': return { maxTokens: 1000, temperature: 0.3 };
+    default: return { maxTokens: 1000, temperature: 0.7 };
+  }
+}
+
+/** Emotional tone guidance for system prompt. */
+const TONE_GUIDANCE = {
+  frustrated: 'The user seems frustrated. Be extra patient and clear. Acknowledge their frustration.',
+  confused: 'The user seems confused. Explain step by step. Use simple language.',
+  appreciative: 'The user is happy. Keep the positive momentum.',
+  excited: 'The user is excited! Match their energy.',
+  curious: 'The user is curious. Be thorough and engaging.',
+};
+
+/**
  * Layer 3: Execution
  * Builds dynamic system prompt and runs agent loop with filtered tools.
  */
@@ -20,9 +44,25 @@ async function execute(message, context, intent) {
 
   const promptParts = [basePrompt];
 
+  // Multi-user awareness in threads
+  const contextMessages = getContext(channelId);
+  const participants = new Set();
+  for (const msg of contextMessages) {
+    if (msg.name) participants.add(msg.name);
+  }
+  if (participants.size > 1) {
+    const names = [...participants].join(', ');
+    promptParts.push(`\n## Thread Participants\nThis thread has multiple participants: ${names}. Address users by name when relevant. The current message is from ${userName}.`);
+  }
+
   // Correction handling
   if (intent.intent === 'correction') {
     promptParts.push(`\n## Important\nThe user is correcting your previous response. Acknowledge the mistake gracefully and provide the corrected information. Don't be defensive.`);
+  }
+
+  // Emotional tone guidance
+  if (intent.emotionalTone && TONE_GUIDANCE[intent.emotionalTone]) {
+    promptParts.push(`\n## Emotional Context\n${TONE_GUIDANCE[intent.emotionalTone]}`);
   }
 
   // Add intent guidance
@@ -38,16 +78,17 @@ async function execute(message, context, intent) {
 
   const systemPrompt = promptParts.join('\n');
   logger.debug('Execute', `System prompt length: ${systemPrompt.length} chars (~${Math.ceil(systemPrompt.length / 4)} tokens est.)`);
-  const contextMessages = getContext(channelId);
 
-  // Build tool filter from intent suggestions
-  let toolFilter = null;
-  if (intent.suggestedTools && intent.suggestedTools.length > 0) {
-    const suggested = new Set(intent.suggestedTools);
-    // Always include suggested tools, but also allow the model to use others
-    // We pass the suggestion as a hint, not a hard filter
-    toolFilter = null; // Let agent loop have access to all tools
-  }
+  // Prefix context messages with usernames for multi-user clarity
+  const enrichedContextMessages = contextMessages.map(msg => {
+    if (msg.role === 'user' && msg.name && typeof msg.content === 'string') {
+      return { ...msg, content: `${msg.name}: ${msg.content}` };
+    }
+    return msg;
+  });
+
+  // Get dynamic model params based on intent
+  const modelParams = getModelParams(intent.intent);
 
   // Run agent loop
   if (agentLoop) {
@@ -56,12 +97,13 @@ async function execute(message, context, intent) {
       userName,
       channelId,
       generatedImages: [],
+      modelParams, // pass dynamic params
     };
 
     const timeout = context.agentLoopTimeout || 60000;
 
     const result = await Promise.race([
-      agentLoop.run(contextMessages, systemPrompt, agentContext),
+      agentLoop.run(enrichedContextMessages, systemPrompt, agentContext),
       new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeout)),
     ]);
 
@@ -84,9 +126,9 @@ async function execute(message, context, intent) {
   const { getSoulConfig } = require('../soul');
   const soulConfig = getSoulConfig();
 
-  const messages = [{ role: 'system', content: systemPrompt }, ...contextMessages];
+  const messages = [{ role: 'system', content: systemPrompt }, ...enrichedContextMessages];
   const text = await Promise.race([
-    generateResponse(messages, soulConfig),
+    generateResponse(messages, { ...soulConfig, ...modelParams }),
     new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 30000)),
   ]);
 

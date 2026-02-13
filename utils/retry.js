@@ -43,10 +43,14 @@ async function withRetry(fn, {
         delay = Math.max(delay, 2000 * attempt);
       }
 
-      logger.warn(`[Retry] ${label} attempt ${attempt}/${maxRetries} failed, retrying in ${delay}ms`, { error: err.message });
+      // Add jitter to prevent thundering herd (0-30%)
+      const jitter = Math.random() * delay * 0.3;
+      const totalDelay = delay + jitter;
+
+      logger.warn(`[Retry] ${label} attempt ${attempt}/${maxRetries} failed, retrying in ${Math.round(totalDelay)}ms`, { error: err.message });
 
       if (attempt < maxRetries) {
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise(r => setTimeout(r, totalDelay));
       }
     }
   }

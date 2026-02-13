@@ -10,6 +10,19 @@ const { getProfile, formatProfileForPrompt } = require('../users');
 const { getUserSettings } = require('../db');
 
 /**
+ * Detect emotional tone from message content.
+ */
+function detectTone(content) {
+  const lower = content.toLowerCase();
+  if (/(!{2,}|😡|🤬|wtf|ugh|frustrated|annoying|broken|doesn't work|still wrong)/i.test(lower)) return 'frustrated';
+  if (/(\?{2,}|confused|don't understand|what do you mean|huh|lost)/i.test(lower)) return 'confused';
+  if (/(thanks|thank you|awesome|perfect|great|love it|🎉|❤️|😊)/i.test(lower)) return 'appreciative';
+  if (/(wow|amazing|incredible|cool|😮|🤯)/i.test(lower)) return 'excited';
+  if (/(\?$|curious|wondering|how does|why does|tell me about)/i.test(lower)) return 'curious';
+  return 'neutral';
+}
+
+/**
  * Fast heuristic intent classification — no LLM call needed.
  */
 function classifyIntent(messageContent) {
@@ -57,6 +70,7 @@ async function analyzeIntent(message, context, gate) {
 
   // Heuristic classification (instant, no LLM)
   const classification = classifyIntent(content);
+  const emotionalTone = detectTone(content);
 
   // Gather context in parallel
   const [memories, profile] = await Promise.all([
@@ -64,7 +78,7 @@ async function analyzeIntent(message, context, gate) {
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 
-  logger.info('Intent', `Heuristic intent="${classification.intent}", tone="${classification.tone}", memories=${memories.length}, profile=${profile ? 'found' : 'none'}`);
+  logger.info('Intent', `Heuristic intent="${classification.intent}", tone="${classification.tone}", emotion="${emotionalTone}", memories=${memories.length}, profile=${profile ? 'found' : 'none'}`);
 
   // Load user settings
   const userSettings = getUserSettings(userId);
@@ -82,6 +96,7 @@ async function analyzeIntent(message, context, gate) {
     intent: classification.intent,
     suggestedTools,
     tone: classification.tone,
+    emotionalTone,
     includeImage: classification.intent === 'image_request',
     memoryContext: memories,
     userContext: profile,
@@ -91,4 +106,4 @@ async function analyzeIntent(message, context, gate) {
   };
 }
 
-module.exports = { analyzeIntent, classifyIntent };
+module.exports = { analyzeIntent, classifyIntent, detectTone };

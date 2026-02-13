@@ -33,7 +33,8 @@ class AgentLoop {
 
       iterations++;
 
-      const response = await this.openai.createChatCompletion(fullMessages, tools);
+      const modelOpts = context.modelParams || {};
+      const response = await this.openai.createChatCompletion(fullMessages, tools, modelOpts);
 
       if (!response.tool_calls || response.tool_calls.length === 0) {
         return {

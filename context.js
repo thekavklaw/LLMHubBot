@@ -10,7 +10,7 @@ const { saveSummary, getLatestSummary, insertContext, loadContext, clearContext:
 const config = require('./config');
 const logger = require('./logger');
 
-const MAX_CONTEXT_TOKENS = 6000;
+const MAX_CONTEXT_TOKENS = 12000;
 const SUMMARIZE_OLDEST_PERCENT = 0.6;
 const MAX_CONTEXT_MESSAGES = 100; // max messages to keep in SQLite per channel
 const MAX_CACHED_CHANNELS = 100;

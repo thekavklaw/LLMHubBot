@@ -1,17 +1,32 @@
 /**
  * @module thinking/layer5-reflect
  * @description Async reflection layer that runs after responses are sent. Extracts
- * user facts, stores memories, and triggers periodic soul reflection.
+ * genuinely useful user insights, stores memories, and triggers periodic soul reflection.
  */
 
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
 const { withRetry } = require('../utils/retry');
 const { storeMemory } = require('../memory');
-const { appendUserNotes } = require('../users');
+const { appendUserNotes, getProfile, consolidateUserProfile } = require('../users');
 const { reflectAndUpdate } = require('../soul');
 
 let reflectionCount = 0;
+
+const REFLECTION_PROMPT = `Analyze this conversation exchange and extract ONLY genuinely useful insights about the user. Focus on:
+- Communication preferences (verbose vs concise, technical vs casual)
+- Expertise level in topics discussed
+- Specific preferences stated or implied
+- Corrections they made (what was wrong, what's right)
+- Topics they're passionate about vs just asking about
+
+Do NOT extract:
+- "User discussed topic X" (useless)
+- Generic observations
+- Things obvious from the message itself
+
+Return JSON: { "insights": [{ "type": "preference|expertise|interest|correction", "content": "specific insight", "confidence": 0.0-1.0 }], "memoryWorthStoring": "key fact to remember long-term, or null" }
+If nothing meaningful to extract, return { "insights": [], "memoryWorthStoring": null }`;
 
 /**
  * Layer 5: Async Reflection
@@ -31,17 +46,7 @@ async function reflect(message, response, context) {
     const intentModel = process.env.INTENT_MODEL || 'gpt-4.1-mini';
 
     const result = await withRetry(() => thinkWithModel([
-      {
-        role: 'system',
-        content: `Extract learnings from this bot conversation. Return JSON:
-{
-  "userFacts": ["fact about the user"],
-  "topics": ["topic discussed"],
-  "toolsHelpful": true/false,
-  "memoryWorthStoring": "key fact to remember long-term, or null"
-}
-Only include genuinely useful insights. Skip trivial exchanges.`,
-      },
+      { role: 'system', content: REFLECTION_PROMPT },
       {
         role: 'user',
         content: `User ${userName}: "${content.slice(0, 300)}"\nBot response: "${responseText.slice(0, 300)}"${response.toolsUsed?.length ? `\nTools used: ${response.toolsUsed.join(', ')}` : ''}`,
@@ -49,15 +54,17 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
     ], intentModel), { label: 'reflection', maxRetries: 2 });
 
     const parsed = JSON.parse(result);
+    const insights = parsed.insights || [];
 
-    logger.info('Reflect', `Extracted: ${(parsed.userFacts || []).length} user facts, memory=${parsed.memoryWorthStoring ? 'yes' : 'no'}, topics=${(parsed.topics || []).length}`);
+    logger.info('Reflect', `Extracted: ${insights.length} insights, memory=${parsed.memoryWorthStoring ? 'yes' : 'no'}`);
 
-    // Update user profile with new facts
-    if (parsed.userFacts && Array.isArray(parsed.userFacts) && userId) {
-      for (const fact of parsed.userFacts) {
-        if (fact && fact.length > 5) {
-          appendUserNotes(userId, fact);
-          logger.debug('Reflect', `User profile update for ${userName}: "${fact}"`);
+    // Update user profile with meaningful insights (confidence > 0.5)
+    if (insights.length > 0 && userId) {
+      for (const insight of insights) {
+        if (insight && insight.content && insight.content.length > 5 && (insight.confidence || 0) >= 0.5) {
+          const prefix = insight.type ? `[${insight.type}] ` : '';
+          appendUserNotes(userId, `${prefix}${insight.content}`);
+          logger.debug('Reflect', `User insight for ${userName}: [${insight.type}] "${insight.content}" (conf=${insight.confidence})`);
         }
       }
     }
@@ -73,17 +80,12 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
       });
     }
 
-    // Store topics
-    if (parsed.topics && Array.isArray(parsed.topics)) {
-      for (const topic of parsed.topics.slice(0, 2)) {
-        if (topic && topic.length > 3) {
-          await storeMemory(`${userName} discussed: ${topic}`, {
-            userId,
-            userName,
-            channelId,
-            category: 'topic',
-          });
-        }
+    // Consolidate user profile if notes are getting long
+    if (userId) {
+      try {
+        await consolidateUserProfile(userId, userName);
+      } catch (err) {
+        logger.error('Reflect', `Profile consolidation error for ${userName}:`, err.message);
       }
     }
 
@@ -93,7 +95,7 @@ Only include genuinely useful insights. Skip trivial exchanges.`,
       await reflectAndUpdate();
     }
 
-    logger.debug('Reflect', `Processed reflection for ${userName}: ${JSON.stringify(parsed).slice(0, 100)}`);
+    logger.debug('Reflect', `Processed reflection for ${userName}: ${insights.length} insights`);
   } catch (err) {
     logger.error('Reflect', 'Reflection error:', { error: err.message, stack: err.stack });
   }

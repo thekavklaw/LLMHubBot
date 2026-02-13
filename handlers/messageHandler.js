@@ -27,6 +27,7 @@ const logger = require('../logger');
 const { ModelQueue } = require('../utils/model-queue');
 const MessageDebouncer = require('../utils/debouncer');
 const { friendlyError } = require('../utils/errors');
+const { recordProcessed, recordError: recordHealthError } = require('../health');
 
 // ── Per-model queue system ──
 const modelQueue = new ModelQueue({
@@ -342,6 +343,7 @@ async function processMessage(message, content) {
           }
         } catch (_) {}
 
+        recordProcessed();
         const responsePreview = (orchestratorResult.text || '[image]').slice(0, 80);
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
@@ -399,6 +401,7 @@ async function processMessage(message, content) {
   } catch (err) {
     errorCount++;
     updateHealth();
+    recordHealthError();
     logger.error('MessageHandler', 'Error:', err);
     try {
       await message.channel.send({ embeds: [errorEmbed(friendlyError(err))] });

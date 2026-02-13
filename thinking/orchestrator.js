@@ -39,6 +39,7 @@ class ThinkingOrchestrator {
     this.agentLoop = agentLoop;
     this.config = config;
     this._modelQueue = null; // set externally
+    this._reflectionCounters = new Map(); // channelId -> message count
     logger.info('Orchestrator', '5-layer thinking system initialized');
   }
 
@@ -152,8 +153,16 @@ class ThinkingOrchestrator {
       }
     }
 
-    // Layer 5: Reflection (async, non-blocking) — skip under load, but always run for corrections
-    if (loadLevel <= 1 || (intent && intent.intent === 'correction')) {
+    // Layer 5: Reflection (async, non-blocking) — every 3rd message, on corrections, or under low load
+    const channelId = context.channelId;
+    const reflCount = (this._reflectionCounters.get(channelId) || 0) + 1;
+    this._reflectionCounters.set(channelId, reflCount);
+
+    const shouldReflect = (intent && intent.intent === 'correction') ||
+                          reflCount % 3 === 0 ||
+                          (loadLevel <= 1);
+
+    if (shouldReflect) {
       setImmediate(() => {
         const l5Start = Date.now();
         reflect(message, response, fullContext)
@@ -161,7 +170,7 @@ class ThinkingOrchestrator {
           .catch(err => logger.error('Orchestrator', 'Layer 5 (Reflect) failed:', { error: err.message, stack: err.stack }));
       });
     } else {
-      logger.debug('Orchestrator', `Skipping reflection (load level ${loadLevel})`);
+      logger.debug('Orchestrator', `Skipping reflection (load=${loadLevel}, count=${reflCount})`);
     }
 
     logger.info('Orchestrator', `Total thinking pipeline: ${Date.now() - pipelineStart}ms`);
