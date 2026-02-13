@@ -73,11 +73,8 @@ class AgentLoop {
         const result = await this.registry.executeTool(toolCall.function.name, args, context);
         logger.info('AgentLoop', `Tool call #${toolCallHistory.length}: ${toolCall.function.name} → ${result.success ? 'success' : 'fail'} in ${Date.now() - toolStart}ms`);
 
-        // Track generated images
-        if (toolCall.function.name === 'generate_image' && result.success) {
-          context.generatedImages = context.generatedImages || [];
-          context.generatedImages.push(result.result);
-        }
+        // Note: generate_image tool now pushes to context.generatedImages directly
+        // and returns only metadata (no base64) to avoid bloating the context
 
         // Truncate result
         let resultStr = JSON.stringify(result.success ? result.result : { error: result.error });

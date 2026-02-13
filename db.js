@@ -80,6 +80,19 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS conversation_context (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id TEXT NOT NULL,
+    message_id TEXT,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    name TEXT,
+    timestamp INTEGER DEFAULT (strftime('%s','now')),
+    metadata TEXT
+  )
+`);
+
 // ── Indexes ──
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp)`);
@@ -87,6 +100,30 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_channel ON memories(channel_id)
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON user_profiles(last_seen)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_conversations_channel ON conversations(channel_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_context_channel ON conversation_context(channel_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_context_message_id ON conversation_context(message_id)`);
+
+// ── Context persistence statements ──
+const insertContextStmt = db.prepare(
+  'INSERT INTO conversation_context (channel_id, message_id, role, content, name, metadata) VALUES (?, ?, ?, ?, ?, ?)'
+);
+const loadContextStmt = db.prepare(
+  'SELECT role, content, name, message_id FROM conversation_context WHERE channel_id = ? ORDER BY id DESC LIMIT ?'
+);
+const clearContextStmt = db.prepare(
+  'DELETE FROM conversation_context WHERE channel_id = ?'
+);
+const updateContextByMsgIdStmt = db.prepare(
+  'UPDATE conversation_context SET content = ? WHERE channel_id = ? AND message_id = ?'
+);
+const deleteContextByMsgIdStmt = db.prepare(
+  'DELETE FROM conversation_context WHERE channel_id = ? AND message_id = ?'
+);
+const trimContextStmt = db.prepare(
+  `DELETE FROM conversation_context WHERE channel_id = ? AND id NOT IN (
+    SELECT id FROM conversation_context WHERE channel_id = ? ORDER BY id DESC LIMIT ?
+  )`
+);
 
 // ── Prepared statements ──
 const insertStmt = db.prepare(
@@ -237,6 +274,33 @@ function setState(key, value) {
   setStateStmt.run(key, String(value));
 }
 
+// ── Context persistence functions ──
+function insertContext(channelId, messageId, role, content, name, metadata) {
+  insertContextStmt.run(channelId, messageId || null, role, typeof content === 'string' ? content : JSON.stringify(content), name || null, metadata || null);
+}
+
+function loadContext(channelId, limit = 50) {
+  return loadContextStmt.all(channelId, limit).reverse();
+}
+
+function clearContext(channelId) {
+  clearContextStmt.run(channelId);
+}
+
+function updateContextByMsgId(channelId, messageId, newContent) {
+  updateContextByMsgIdStmt.run(typeof newContent === 'string' ? newContent : JSON.stringify(newContent), channelId, messageId);
+}
+
+function deleteContextByMsgId(channelId, messageId) {
+  deleteContextByMsgIdStmt.run(channelId, messageId);
+}
+
+function trimContext(channelId, keepCount = 100) {
+  trimContextStmt.run(channelId, channelId, keepCount);
+}
+
+function getDb() { return db; }
+
 module.exports = {
   logMessage, getRecentMessages,
   saveSummary, getLatestSummary,
@@ -244,4 +308,6 @@ module.exports = {
   upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics,
   getState, setState,
   logToolUsage, getToolStats,
+  getDb,
+  insertContext, loadContext, clearContext, updateContextByMsgId, deleteContextByMsgId, trimContext,
 };

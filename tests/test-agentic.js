@@ -187,10 +187,15 @@ async function test(name, fn) {
     assert.strictEqual(result.text, 'recovered');
   });
 
-  await test('AgentLoop: tracks generated images', async () => {
+  await test('AgentLoop: tracks generated images via context', async () => {
     const mockRegistry = {
       getToolsForOpenAI: () => [{ type: 'function', function: { name: 'generate_image', description: 'g', parameters: {} } }],
-      executeTool: async () => ({ success: true, result: { image_buffer: 'abc123', prompt: 'cat' } }),
+      executeTool: async (name, args, context) => {
+        // Simulate what the real generate_image tool does: push to context.generatedImages
+        context.generatedImages = context.generatedImages || [];
+        context.generatedImages.push({ image_buffer: 'abc123', prompt_used: 'cat', size: '1024x1024' });
+        return { success: true, result: { success: true, description: 'Generated image', size: '1024x1024' } };
+      },
     };
     let n = 0;
     const mockOpenAI = {
@@ -349,28 +354,28 @@ async function test(name, fn) {
     assert.strictEqual(r.timezone, 'America/New_York');
   });
 
-  await test('code_runner: executes simple expression', async () => {
-    const r = await code_runner.execute({ code: '2 + 3' });
-    assert.strictEqual(r.success, true);
-    assert.strictEqual(r.result, '5');
+  await test('code_runner: has E2B-based implementation', () => {
+    assert.strictEqual(code_runner.name, 'code_runner');
+    assert.ok(code_runner.description.includes('sandbox'));
+    assert.deepStrictEqual(code_runner.parameters.properties.language.enum, ['python', 'javascript']);
   });
 
-  await test('code_runner: times out on infinite loop', async () => {
-    const r = await code_runner.execute({ code: 'while(true){}' });
-    assert.strictEqual(r.success, false);
-    assert.ok(r.error.includes('timed out') || r.error.includes('timeout'));
+  await test('code_runner: rejects unsupported language', async () => {
+    try {
+      await code_runner.execute({ code: 'x', language: 'ruby' });
+      assert.fail('Should throw');
+    } catch (e) {
+      assert.ok(e.message.includes('Unsupported'));
+    }
   });
 
-  await test('code_runner: blocks require/import', async () => {
-    const r = await code_runner.execute({ code: 'require("fs")' });
-    // require is undefined in sandbox, so it should error
-    assert.strictEqual(r.success, false);
-  });
-
-  await test('code_runner: console.log captured', async () => {
-    const r = await code_runner.execute({ code: 'console.log("hello")' });
-    assert.strictEqual(r.success, true);
-    assert.ok(r.output.includes('hello'));
+  await test('code_runner: rejects oversized code', async () => {
+    try {
+      await code_runner.execute({ code: 'x'.repeat(10001) });
+      assert.fail('Should throw');
+    } catch (e) {
+      assert.ok(e.message.includes('too long'));
+    }
   });
 
   await test('define_word: handles valid word', async () => {

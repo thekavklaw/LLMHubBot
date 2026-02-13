@@ -112,6 +112,44 @@ if (config.enableAgentLoop) {
 client.on('messageCreate', handleMessage);
 client.on('interactionCreate', handleInteraction);
 
+// ── Message edit/delete handling ──
+const { updateMessage, deleteMessage } = require('./context');
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  try {
+    if (!newMessage.guild || newMessage.author?.bot) return;
+    if (config.allowedGuildId && newMessage.guild.id !== config.allowedGuildId) return;
+    const allowedChannels = config.allowedChannelIds;
+    const chId = newMessage.channel?.id;
+    const parentId = newMessage.channel?.parentId;
+    if (allowedChannels.length > 0 && !allowedChannels.includes(chId) && !allowedChannels.includes(parentId)) return;
+
+    const content = newMessage.content || '';
+    if (content.length === 0) return;
+
+    await updateMessage(chId, newMessage.id, content);
+    logger.info('MessageEdit', `${newMessage.author?.username} edited message ${newMessage.id} in ${chId}`);
+  } catch (err) {
+    logger.error('MessageEdit', 'Error handling edit:', err);
+  }
+});
+
+client.on('messageDelete', async (message) => {
+  try {
+    if (!message.guild) return;
+    if (config.allowedGuildId && message.guild.id !== config.allowedGuildId) return;
+    const chId = message.channel?.id;
+    const parentId = message.channel?.parentId;
+    const allowedChannels = config.allowedChannelIds;
+    if (allowedChannels.length > 0 && !allowedChannels.includes(chId) && !allowedChannels.includes(parentId)) return;
+
+    await deleteMessage(chId, message.id);
+    logger.info('MessageDelete', `Message ${message.id} deleted from ${chId}`);
+  } catch (err) {
+    logger.error('MessageDelete', 'Error handling delete:', err);
+  }
+});
+
 // ── Graceful shutdown ──
 let isShuttingDown = false;
 async function shutdown(signal) {

@@ -6,7 +6,7 @@ let _agentLoop = null;
 let _orchestrator = null;
 function setAgentLoop(loop) { _agentLoop = loop; }
 function setOrchestrator(orch) { _orchestrator = orch; }
-const { addMessage, getContext, getRecentContextMessages, withChannelLock } = require('../context');
+const { addMessage, getContext, getRecentContextMessages, withChannelLock, updateMessage, deleteMessage } = require('../context');
 const { logMessage, getState, setState } = require('../db');
 const { shouldRespond } = require('../relevance');
 const { think } = require('../thinking');
@@ -206,7 +206,7 @@ async function handleMessage(message) {
     }
 
     // Only add to context/DB AFTER moderation passes
-    addMessage(channelId, 'user', userContent, userName);
+    addMessage(channelId, 'user', userContent, userName, message.id);
     logMessage(channelId, userId, userName, 'user', message.content);
 
     messageCount++;

@@ -1,11 +1,10 @@
 const OpenAI = require('openai');
-const Database = require('better-sqlite3');
-const path = require('path');
 const config = require('./config');
 const logger = require('./logger');
+const { getDb } = require('./db');
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
-const db = new Database(path.join(__dirname, 'llmhub.db'));
+const db = getDb();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS moderation_log (

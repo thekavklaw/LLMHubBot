@@ -11,15 +11,24 @@ module.exports = {
     },
     required: ['prompt'],
   },
-  timeout: 60000, // images can take longer
+  timeout: 60000,
   async execute(args, context) {
-    // Use the openai client passed via context
     const { generateImage } = require('../../openai-client');
     const size = args.size || '1024x1024';
     const buffer = await generateImage(args.prompt, size);
-    return {
+
+    // Store full image data in context for later attachment sending
+    context.generatedImages = context.generatedImages || [];
+    context.generatedImages.push({
       image_buffer: buffer.toString('base64'),
       prompt_used: args.prompt,
+      size,
+    });
+
+    // Return ONLY metadata to the model — no base64
+    return {
+      success: true,
+      description: `Generated image: "${args.prompt}"`,
       size,
     };
   },

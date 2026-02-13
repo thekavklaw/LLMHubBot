@@ -1,49 +1,121 @@
 const { generateResponse } = require('./openai-client');
 const { countMessagesTokens } = require('./tokenizer');
-const { saveSummary, getLatestSummary } = require('./db');
+const { saveSummary, getLatestSummary, insertContext, loadContext, clearContext: clearContextDb, updateContextByMsgId, deleteContextByMsgId, trimContext } = require('./db');
 const config = require('./config');
 const logger = require('./logger');
 
 const MAX_CONTEXT_TOKENS = 6000;
 const SUMMARIZE_OLDEST_PERCENT = 0.6;
+const MAX_CONTEXT_MESSAGES = 100; // max messages to keep in SQLite per channel
 
-// channelId -> { messages, messageCount, summary }
+// channelId -> { messages, messageCount, summary, loaded }
 const contexts = new Map();
 
-// Per-channel locks
+// ── Per-channel mutex (promise-chain lock) ──
 const channelLocks = new Map();
 
 async function withChannelLock(channelId, fn) {
-  while (channelLocks.get(channelId)) {
-    await new Promise(r => setTimeout(r, 10));
-  }
-  channelLocks.set(channelId, true);
+  if (!channelLocks.has(channelId)) channelLocks.set(channelId, Promise.resolve());
+  const prev = channelLocks.get(channelId);
+  let resolve;
+  const next = new Promise(r => { resolve = r; });
+  channelLocks.set(channelId, next);
+  await prev;
   try {
     return await fn();
   } finally {
-    channelLocks.set(channelId, false);
+    resolve();
   }
 }
 
 function ensureContext(channelId) {
   if (!contexts.has(channelId)) {
+    // Lazy-load from SQLite on first access
     const dbSummary = getLatestSummary(channelId);
-    contexts.set(channelId, { messages: [], messageCount: 0, summary: dbSummary || '' });
+    const dbMessages = loadContext(channelId, MAX_CONTEXT_MESSAGES);
+    const messages = dbMessages.map(row => ({
+      role: row.role,
+      content: tryParseJson(row.content),
+      name: row.name || undefined,
+      messageId: row.message_id || undefined,
+    }));
+    contexts.set(channelId, { messages, messageCount: messages.length, summary: dbSummary || '', loaded: true });
+    if (messages.length > 0) {
+      logger.info('Context', `Lazy-loaded ${messages.length} messages for channel ${channelId}`);
+    }
   }
   return contexts.get(channelId);
 }
 
-function addMessage(channelId, role, content, userName) {
-  const ctx = ensureContext(channelId);
-  ctx.messages.push({
-    role,
-    content,
-    name: userName ? userName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) : undefined,
-  });
-  ctx.messageCount++;
+function tryParseJson(str) {
+  if (!str || !str.startsWith('[') && !str.startsWith('{')) return str;
+  try { return JSON.parse(str); } catch { return str; }
+}
 
-  // Trigger token budget check (non-blocking)
-  checkTokenBudget(channelId).catch(err => logger.error('Context', 'Token budget error:', err));
+function addMessage(channelId, role, content, userName, messageId) {
+  return withChannelLock(channelId, async () => {
+    const ctx = ensureContext(channelId);
+    const msg = {
+      role,
+      content,
+      name: userName ? userName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) : undefined,
+      messageId: messageId || undefined,
+    };
+    ctx.messages.push(msg);
+    ctx.messageCount++;
+
+    // Write-through to SQLite
+    try {
+      insertContext(channelId, messageId || null, role, content, msg.name);
+      // Trim old messages in SQLite periodically
+      if (ctx.messageCount % 50 === 0) {
+        trimContext(channelId, MAX_CONTEXT_MESSAGES);
+      }
+    } catch (err) {
+      logger.error('Context', `SQLite write error: ${err.message}`);
+    }
+
+    // Check token budget inside the lock
+    await checkTokenBudget(channelId);
+  });
+}
+
+/**
+ * Update a message in context by Discord message ID (for edits).
+ */
+function updateMessage(channelId, messageId, newContent) {
+  return withChannelLock(channelId, async () => {
+    const ctx = ensureContext(channelId);
+    const idx = ctx.messages.findIndex(m => m.messageId === messageId);
+    if (idx !== -1) {
+      ctx.messages[idx].content = newContent;
+      logger.info('Context', `Updated message ${messageId} in channel ${channelId}`);
+    }
+    try {
+      updateContextByMsgId(channelId, messageId, newContent);
+    } catch (err) {
+      logger.error('Context', `SQLite update error: ${err.message}`);
+    }
+  });
+}
+
+/**
+ * Delete a message from context by Discord message ID.
+ */
+function deleteMessage(channelId, messageId) {
+  return withChannelLock(channelId, async () => {
+    const ctx = ensureContext(channelId);
+    const idx = ctx.messages.findIndex(m => m.messageId === messageId);
+    if (idx !== -1) {
+      ctx.messages.splice(idx, 1);
+      logger.info('Context', `Deleted message ${messageId} from channel ${channelId}`);
+    }
+    try {
+      deleteContextByMsgId(channelId, messageId);
+    } catch (err) {
+      logger.error('Context', `SQLite delete error: ${err.message}`);
+    }
+  });
 }
 
 /**
@@ -51,7 +123,7 @@ function addMessage(channelId, role, content, userName) {
  */
 async function checkTokenBudget(channelId) {
   const ctx = ensureContext(channelId);
-  if (ctx.messages.length < 4) return; // not enough to summarize
+  if (ctx.messages.length < 4) return;
 
   const tokens = countMessagesTokens(ctx.messages);
   if (tokens <= MAX_CONTEXT_TOKENS) return;
@@ -62,7 +134,6 @@ async function checkTokenBudget(channelId) {
   const oldMessages = ctx.messages.slice(0, splitIdx);
   const keepMessages = ctx.messages.slice(splitIdx);
 
-  // Build text to summarize
   const oldText = oldMessages.map(m => `${m.name || m.role}: ${typeof m.content === 'string' ? m.content : '[media]'}`).join('\n');
   const prevSummary = ctx.summary ? `\nPrevious conversation summary: ${ctx.summary}` : '';
 
@@ -88,7 +159,12 @@ function getContext(channelId) {
   if (ctx.summary) {
     result.push({ role: 'system', content: `Previous conversation summary: ${ctx.summary}` });
   }
-  return result.concat(ctx.messages);
+  // Strip internal fields before returning
+  return result.concat(ctx.messages.map(m => ({
+    role: m.role,
+    content: m.content,
+    ...(m.name ? { name: m.name } : {}),
+  })));
 }
 
 function getRecentContextMessages(channelId) {
@@ -96,4 +172,16 @@ function getRecentContextMessages(channelId) {
   return ctx.messages;
 }
 
-module.exports = { addMessage, getContext, getRecentContextMessages, withChannelLock };
+function clearChannelContext(channelId) {
+  return withChannelLock(channelId, async () => {
+    contexts.delete(channelId);
+    try {
+      clearContextDb(channelId);
+    } catch (err) {
+      logger.error('Context', `SQLite clear error: ${err.message}`);
+    }
+    logger.info('Context', `Cleared context for channel ${channelId}`);
+  });
+}
+
+module.exports = { addMessage, getContext, getRecentContextMessages, withChannelLock, updateMessage, deleteMessage, clearChannelContext };
