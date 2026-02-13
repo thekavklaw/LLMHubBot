@@ -78,8 +78,9 @@ class AgentLoop {
         const toolStart = Date.now();
         logger.info('AgentLoop', `Tool call #${toolCallHistory.length}: ${toolCall.function.name}(${JSON.stringify(args).substring(0, 100)})`);
 
-        context.statusEmbed?.addTool(toolCall.function.name);
+        await context.statusEmbed?.addTool(toolCall.function.name);
         const result = await this.registry.executeTool(toolCall.function.name, args, context);
+        await context.statusEmbed?.toolDone(toolCall.function.name);
         logger.info('AgentLoop', `Tool call #${toolCallHistory.length}: ${toolCall.function.name} → ${result.success ? 'success' : 'fail'} in ${Date.now() - toolStart}ms`);
 
         // Note: generate_image tool now pushes to context.generatedImages directly

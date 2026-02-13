@@ -14107,3 +14107,65 @@ Best format so I can actually use it" (469 chars)
 [2026-02-13 20:59:58] [INFO] [Bot] Slash commands registered
 [2026-02-13 20:59:58] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 20:59:58] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 21:02:29] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 21:02:33] [INFO] [Context] Lazy-loaded 36 messages for channel 1471696285433204940
+[2026-02-13 21:02:33] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "try again, you should have some knowledge about yourself"
+[2026-02-13 21:02:33] [INFO] [Gate] No heuristic matched, falling back to LLM for: "try again, you should have some knowledge about yourself"
+[2026-02-13 21:02:34] [INFO] [Gate] LLM fallback result: engage=true, reason="User is prompting the bot to provide information about itself, indicating an ongoing conversation.", confidence=0.9
+[2026-02-13 21:02:34] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="User is prompting the bot to provide information about itself, indicating an ongoing conversation.", confidence=0.9, time=1534ms
+[2026-02-13 21:02:35] [INFO] [Intent] Heuristic intent="correction", tone="receptive", emotion="neutral", memories=0, profile=found
+[2026-02-13 21:02:35] [INFO] [Orchestrator] Layer 2 (Intent): intent=correction, tone=receptive, tools=[], time=538ms
+[2026-02-13 21:02:35] [INFO] [Soul] Changelog loaded (2873 chars, latest entry only)
+[2026-02-13 21:02:36] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 21:02:43] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 21:02:43] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=8426ms
+[2026-02-13 21:02:43] [INFO] [Synthesize] Output: 1 message(s), total 1807 chars, 0 image(s)
+[2026-02-13 21:02:43] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=1ms
+[2026-02-13 21:02:43] [INFO] [Orchestrator] Total thinking pipeline: 10502ms
+[2026-02-13 21:02:44] [INFO] [MessageDelete] Message 1471974861751586979 deleted from 1471696285433204940
+[2026-02-13 21:02:45] [INFO] [MessageHandler] Response sent to 1471696285433204940: "You’re right — my bad. I *do* have some “about myself” info in my loaded context" (1807 chars)
+[2026-02-13 21:02:48] [INFO] [Reflect] Extracted: 2 insights, sig=0.75, topics=3, memory=yes
+[2026-02-13 21:02:48] [INFO] [Reflect] Storing memory (sig=0.75): "User expects the bot to be aware of and use its internal changelog or built-in c"
+[2026-02-13 21:03:01] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 21:03:04] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "great, that'll help you be a lot more cohesive"
+[2026-02-13 21:03:04] [INFO] [Gate] Heuristic match: "active conversation" for kaveen (bot spoke recently in channel)
+[2026-02-13 21:03:04] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Active conversation — bot recently spoke in this channel", confidence=0.85, time=3ms
+[2026-02-13 21:03:05] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="appreciative", memories=0, profile=found
+[2026-02-13 21:03:05] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=207ms
+[2026-02-13 21:03:05] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 21:03:08] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 21:03:08] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=3527ms
+[2026-02-13 21:03:08] [INFO] [Synthesize] Output: 1 message(s), total 529 chars, 0 image(s)
+[2026-02-13 21:03:08] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 21:03:08] [INFO] [Orchestrator] Total thinking pipeline: 3740ms
+[2026-02-13 21:03:08] [INFO] [MessageDelete] Message 1471974994316627999 deleted from 1471696285433204940
+[2026-02-13 21:03:09] [INFO] [MessageHandler] Response sent to 1471696285433204940: "yeah — having an internal “this is how I work” map stops me from hand-waving and" (529 chars)
+[2026-02-13 21:05:01] [INFO] [Bot] Received SIGTERM, shutting down gracefully... Uptime: 304s
+[2026-02-13 21:05:01] [INFO] [Bot] Shutdown stats: 2 messages processed, 0 errors, 39 tool types used
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 21:05:07] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 21:05:07] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 21:05:07] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 21:05:07] [INFO] [Health] Health server listening on http://127.0.0.1:3870/health
+[2026-02-13 21:05:07] [INFO] [Bot] Slash commands registered
+[2026-02-13 21:05:08] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 21:05:08] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

@@ -105,13 +105,23 @@ class ThinkingOrchestrator {
       intent = { intent: 'discussion', suggestedTools: [], tone: 'helpful', memoryContext: [], userContext: null, keyContext: '', approach: '' };
     }
 
+    // Memory recall (between intent and execution)
+    if (intent.memoryContext?.length > 0) {
+      await statusEmbed?.updateStage('memory', 'done', `${intent.memoryContext.length} memories`);
+    } else {
+      await statusEmbed?.updateStage('memory', 'done', 'no matches');
+    }
+
     // Layer 3: Execution
     let result;
     const l3Start = Date.now();
     try {
       await statusEmbed?.updateStage('execute', 'active');
       result = await execute(message, fullContext, intent);
-      await statusEmbed?.updateStage('execute', 'done', `${result.toolsUsed.length} tools`);
+      const toolSummary = result.toolsUsed.length > 0
+        ? result.toolsUsed.join(', ')
+        : 'direct response';
+      await statusEmbed?.updateStage('execute', 'done', toolSummary);
       logger.info('Orchestrator', `Layer 3 (Execute): ${result.toolsUsed.length} tools, ${result.iterations} iterations, time=${Date.now() - l3Start}ms`);
     } catch (err) {
       logger.error('Orchestrator', 'Layer 3 (Execute) failed, falling back to direct response:', { error: err.message, stack: err.stack });

@@ -285,9 +285,9 @@ async function processMessage(message, content, mergedAttachments) {
 
       const stopTyping = startTyping(message.channel);
 
-      // Status embed — only shown if processing takes >1.5s
+      // Status embed — show immediately so users see every stage
       const statusEmbed = new StatusEmbed(message.channel);
-      const showTimer = setTimeout(() => statusEmbed.show(), 1500);
+      await statusEmbed.show();
 
       try {
         const orchestratorResult = await modelQueue.enqueue(config.model, () =>
@@ -310,7 +310,7 @@ async function processMessage(message, content, mergedAttachments) {
         );
 
         stopTyping();
-        clearTimeout(showTimer);
+        
         await statusEmbed.destroy();
 
         // Remove backpressure emoji
@@ -374,7 +374,7 @@ async function processMessage(message, content, mergedAttachments) {
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
         stopTyping();
-        clearTimeout(showTimer);
+        
         await statusEmbed.destroy();
         if (isQueued) {
           try { await message.reactions.cache.get('⏳')?.users?.remove(botId); } catch (_) {}
