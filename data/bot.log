@@ -13602,3 +13602,195 @@ You testing if I’m a bot again, or do you actually need" (104 chars)
 [2026-02-13 15:20:37] [INFO] [Bot] Slash commands registered
 [2026-02-13 15:20:37] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 15:20:37] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 15:55:19] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 15:55:23] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "hi llmhub"
+[2026-02-13 15:55:23] [INFO] [Gate] No heuristic matched, falling back to LLM for: "hi llmhub"
+[2026-02-13 15:55:25] [INFO] [Gate] LLM fallback result: engage=true, reason="User greeted the bot, inviting interaction.", confidence=0.9
+[2026-02-13 15:55:25] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="User greeted the bot, inviting interaction.", confidence=0.9, time=1357ms
+[2026-02-13 15:55:26] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="neutral", memories=0, profile=found
+[2026-02-13 15:55:26] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=1051ms
+[2026-02-13 15:55:26] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 15:55:28] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 15:55:28] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=1921ms
+[2026-02-13 15:55:28] [INFO] [Synthesize] Output: 1 message(s), total 23 chars, 0 image(s)
+[2026-02-13 15:55:28] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=1ms
+[2026-02-13 15:55:28] [INFO] [Orchestrator] Total thinking pipeline: 4331ms
+[2026-02-13 15:55:29] [INFO] [MessageHandler] Response sent to 1471696285433204940: "hey kaveen — what’s up?" (23 chars)
+[2026-02-13 16:26:43] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 16:26:47] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "just chilling. You ready for people to chat with y?"
+[2026-02-13 16:26:47] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 16:26:47] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Question in #gpt channel", confidence=0.8, time=1ms
+[2026-02-13 16:26:48] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 16:26:48] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=1415ms
+[2026-02-13 16:26:48] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 16:26:51] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 16:26:51] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2441ms
+[2026-02-13 16:26:51] [INFO] [Synthesize] Output: 1 message(s), total 136 chars, 0 image(s)
+[2026-02-13 16:26:51] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 16:26:51] [INFO] [Orchestrator] Total thinking pipeline: 3857ms
+[2026-02-13 16:26:52] [INFO] [MessageHandler] Response sent to 1471696285433204940: "yeah, I’m around 😄
+
+what do you want this place to be for you—random banter, he" (136 chars)
+[2026-02-13 16:27:55] [INFO] [MessageHandler] Message received: paillat in 1471696285433204940 (channel)
+[2026-02-13 16:27:59] [INFO] [Orchestrator] Processing message from paillat in 1471696285433204940: "test"
+[2026-02-13 16:27:59] [INFO] [Gate] No heuristic matched, falling back to LLM for: "test"
+[2026-02-13 16:27:59] [INFO] [Gate] LLM fallback result: engage=false, reason="Message is a simple test without a clear invitation for bot interaction.", confidence=0.9
+[2026-02-13 16:27:59] [INFO] [Orchestrator] Layer 1 (Gate): engage=false, reason="Message is a simple test without a clear invitation for bot interaction.", confidence=0.9, time=661ms
+[2026-02-13 16:27:59] [INFO] [Orchestrator] Total thinking pipeline: 661ms (ignored)
+[2026-02-13 16:30:19] [INFO] [MessageHandler] Message received: paillat in 1471696285433204940 (channel)
+[2026-02-13 16:30:23] [INFO] [Orchestrator] Processing message from paillat in 1471696285433204940: ":("
+[2026-02-13 16:30:23] [INFO] [Orchestrator] Layer 1 (Gate): engage=false, reason="Message too short", confidence=0.95, time=0ms
+[2026-02-13 16:30:23] [INFO] [Orchestrator] Total thinking pipeline: 0ms (ignored)
+[2026-02-13 16:37:22] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 16:37:26] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "Refer to the bot specifically, hey llm hub you listening? how should people get "
+[2026-02-13 16:37:26] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 16:37:26] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Question in #gpt channel", confidence=0.8, time=0ms
+[2026-02-13 16:37:26] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 16:37:26] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=305ms
+[2026-02-13 16:37:26] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 16:37:29] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 16:37:29] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2456ms
+[2026-02-13 16:37:29] [INFO] [Synthesize] Output: 1 message(s), total 303 chars, 0 image(s)
+[2026-02-13 16:37:29] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 16:37:29] [INFO] [Orchestrator] Total thinking pipeline: 2762ms
+[2026-02-13 16:37:30] [INFO] [MessageHandler] Response sent to 1471696285433204940: "Yep, I’m listening.
+
+Best ways to get my attention:
+- Start the message with **“" (303 chars)
+[2026-02-13 16:38:00] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 16:38:03] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "you can also pick up indirect references right?"
+[2026-02-13 16:38:03] [INFO] [Gate] Heuristic match: "question in #gpt channel"
+[2026-02-13 16:38:03] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Question in #gpt channel", confidence=0.8, time=0ms
+[2026-02-13 16:38:03] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 16:38:03] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=199ms
+[2026-02-13 16:38:03] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 16:38:06] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 16:38:06] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2767ms
+[2026-02-13 16:38:06] [INFO] [Synthesize] Output: 1 message(s), total 378 chars, 0 image(s)
+[2026-02-13 16:38:06] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 16:38:06] [INFO] [Orchestrator] Total thinking pipeline: 2966ms
+[2026-02-13 16:38:07] [INFO] [MessageHandler] Response sent to 1471696285433204940: "Sometimes, yeah — if it’s pretty obvious you’re talking to me (like “the bot” / " (378 chars)
+[2026-02-13 16:38:43] [INFO] [MessageHandler] Message received: paillat in 1471696285433204940 (channel)
+[2026-02-13 16:38:46] [INFO] [Orchestrator] Processing message from paillat in 1471696285433204940: "makes sense"
+[2026-02-13 16:38:46] [INFO] [Orchestrator] Layer 1 (Gate): engage=false, reason="Low-value filler", confidence=0.9, time=0ms
+[2026-02-13 16:38:46] [INFO] [Orchestrator] Total thinking pipeline: 1ms (ignored)
+[2026-02-13 17:36:40] [INFO] [MessageHandler] Message received: melors in 1471922693983961109 (thread)
+[2026-02-13 17:36:44] [INFO] [Orchestrator] Processing message from melors in 1471922693983961109: "What happens if I exercise, eat healthy, but don’t drink enough water? Key word "
+[2026-02-13 17:36:44] [INFO] [Gate] Heuristic match: "thread message" for melors
+[2026-02-13 17:36:44] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 17:36:44] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="frustrated", memories=0, profile=found
+[2026-02-13 17:36:44] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=433ms
+[2026-02-13 17:36:44] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 17:36:54] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 17:36:54] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=9563ms
+[2026-02-13 17:36:54] [INFO] [Synthesize] Output: 1 message(s), total 1763 chars, 0 image(s)
+[2026-02-13 17:36:54] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 17:36:54] [INFO] [Orchestrator] Total thinking pipeline: 9997ms
+[2026-02-13 17:36:54] [INFO] [MessageDelete] Message 1471923081260957718 deleted from 1471922693983961109
+[2026-02-13 17:36:56] [INFO] [MessageHandler] Response sent to 1471922693983961109: "If you’re training and eating well but **consistently under-drinking**, you usua" (1763 chars)
+[2026-02-13 17:45:33] [INFO] [MessageHandler] Message received: melors in 1471922693983961109 (thread)
+[2026-02-13 17:45:36] [INFO] [Orchestrator] Processing message from melors in 1471922693983961109: "Why is that?"
+[2026-02-13 17:45:36] [INFO] [Gate] Heuristic match: "thread message" for melors
+[2026-02-13 17:45:36] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="In /chat thread", confidence=0.95, time=0ms
+[2026-02-13 17:45:37] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 17:45:37] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=571ms
+[2026-02-13 17:45:37] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 17:45:47] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 17:45:47] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=9989ms
+[2026-02-13 17:45:47] [INFO] [Synthesize] Output: 1 message(s), total 1788 chars, 0 image(s)
+[2026-02-13 17:45:47] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 17:45:47] [INFO] [Orchestrator] Total thinking pipeline: 10560ms
+[2026-02-13 17:45:47] [INFO] [MessageDelete] Message 1471925314039841061 deleted from 1471922693983961109
+[2026-02-13 17:45:48] [INFO] [MessageHandler] Response sent to 1471922693983961109: "Because water isn’t just “nice to have” — it’s the medium your body uses to run " (1788 chars)
+[2026-02-13 17:56:07] [INFO] [MessageHandler] Message received: almus in 1471696285433204940 (channel)
+[2026-02-13 17:56:11] [INFO] [Orchestrator] Processing message from almus in 1471696285433204940: "<@1471693519776251975> what options, features, or commands do you support?"
+[2026-02-13 17:56:11] [INFO] [Gate] Heuristic match: "bot mentioned" for almus
+[2026-02-13 17:56:11] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Bot mentioned", confidence=1, time=0ms
+[2026-02-13 17:56:11] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="curious", memories=0, profile=found
+[2026-02-13 17:56:11] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=577ms
+[2026-02-13 17:56:11] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 17:56:19] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 17:56:19] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=7607ms
+[2026-02-13 17:56:19] [INFO] [Synthesize] Output: 1 message(s), total 1038 chars, 0 image(s)
+[2026-02-13 17:56:19] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 17:56:19] [INFO] [Orchestrator] Total thinking pipeline: 8186ms
+[2026-02-13 17:56:19] [INFO] [MessageDelete] Message 1471927974839189575 deleted from 1471696285433204940
+[2026-02-13 17:56:20] [INFO] [MessageHandler] Response sent to 1471696285433204940: "alright almus, here’s the current “feature set” (I’m not a slash-command bot, mo" (1038 chars)
+[2026-02-13 17:56:22] [INFO] [Reflect] Extracted: 3 insights, memory=yes
+[2026-02-13 17:56:22] [INFO] [Reflect] Storing memory: "User 'almus' prefers clear, concise information about bot features and is famili"
+[2026-02-13 18:24:39] [INFO] [MessageHandler] Message received: mrowrrr_murrr in 1471696285433204940 (channel)
+[2026-02-13 18:24:42] [INFO] [Orchestrator] Processing message from mrowrrr_murrr in 1471696285433204940: "<@1471693519776251975> welcome to the server! Nice to meet ya"
+[2026-02-13 18:24:42] [INFO] [Gate] Heuristic match: "bot mentioned" for mrowrrr_murrr
+[2026-02-13 18:24:42] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Bot mentioned", confidence=1, time=0ms
+[2026-02-13 18:24:43] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="neutral", memories=0, profile=found
+[2026-02-13 18:24:43] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=770ms
+[2026-02-13 18:24:43] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 18:24:46] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 18:24:46] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2756ms
+[2026-02-13 18:24:46] [INFO] [Synthesize] Output: 1 message(s), total 173 chars, 0 image(s)
+[2026-02-13 18:24:46] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 18:24:46] [INFO] [Orchestrator] Total thinking pipeline: 3526ms
+[2026-02-13 18:24:47] [INFO] [MessageHandler] Response sent to 1471696285433204940: "nice to meet you too, mrowrrr_murrr — thanks for the welcome.
+
+what’s this serve" (173 chars)
+[2026-02-13 18:35:52] [INFO] [MessageHandler] Message received: proxema in 1471696285433204940 (channel)
+[2026-02-13 18:35:55] [INFO] [Orchestrator] Processing message from proxema in 1471696285433204940: "<@1471693519776251975> hello there I see you are back in town!"
+[2026-02-13 18:35:55] [INFO] [Gate] Heuristic match: "bot mentioned" for proxema
+[2026-02-13 18:35:55] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Bot mentioned", confidence=1, time=0ms
+[2026-02-13 18:35:56] [INFO] [Intent] Heuristic intent="general", tone="helpful", emotion="neutral", memories=0, profile=found
+[2026-02-13 18:35:56] [INFO] [Orchestrator] Layer 2 (Intent): intent=general, tone=helpful, tools=[], time=1069ms
+[2026-02-13 18:35:56] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 18:35:58] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 18:35:58] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=2042ms
+[2026-02-13 18:35:58] [INFO] [Synthesize] Output: 1 message(s), total 69 chars, 0 image(s)
+[2026-02-13 18:35:58] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 18:35:58] [INFO] [Orchestrator] Total thinking pipeline: 3112ms
+[2026-02-13 18:36:00] [INFO] [MessageHandler] Response sent to 1471696285433204940: "hey proxema — yeah, I’ve crawled out of the vents again. what’s good?" (69 chars)
+[2026-02-13 18:41:05] [INFO] [MessageHandler] Message received: mrowrrr_murrr in 1471696285433204940 (channel)
+[2026-02-13 18:41:08] [INFO] [Orchestrator] Processing message from mrowrrr_murrr in 1471696285433204940: "It's about LLM technology.  Back in the day it was a support server for a cool o"
+[2026-02-13 18:41:08] [INFO] [Gate] Heuristic match: "bot mentioned" for mrowrrr_murrr
+[2026-02-13 18:41:08] [INFO] [Orchestrator] Layer 1 (Gate): engage=true, reason="Bot mentioned", confidence=1, time=0ms
+[2026-02-13 18:41:08] [INFO] [Intent] Heuristic intent="current_info", tone="informative", emotion="excited", memories=0, profile=found
+[2026-02-13 18:41:08] [INFO] [Orchestrator] Layer 2 (Intent): intent=current_info, tone=informative, tools=[brave_search,tavily_search], time=226ms
+[2026-02-13 18:41:08] [INFO] [AgentLoop] Agent loop started with 10 tools available
+[2026-02-13 18:41:13] [INFO] [Execute] Agent loop completed in 1 iterations, 0 tools used
+[2026-02-13 18:41:13] [INFO] [Orchestrator] Layer 3 (Execute): 0 tools, 1 iterations, time=4359ms
+[2026-02-13 18:41:13] [INFO] [Synthesize] Output: 1 message(s), total 518 chars, 0 image(s)
+[2026-02-13 18:41:13] [INFO] [Orchestrator] Layer 4 (Synthesize): action=respond, messages=1, time=0ms
+[2026-02-13 18:41:13] [INFO] [Orchestrator] Total thinking pipeline: 4586ms
+[2026-02-13 18:41:14] [INFO] [MessageHandler] Response sent to 1471696285433204940: "that’s actually a pretty sick origin story — “support server for one of the earl" (518 chars)
+[2026-02-13 19:33:50] [INFO] [MessageHandler] Message received: kaveen in 1471696285433204940 (channel)
+[2026-02-13 19:33:54] [INFO] [Orchestrator] Processing message from kaveen in 1471696285433204940: "me! I made the original bot 🙂"
+[2026-02-13 19:33:54] [INFO] [Gate] No heuristic matched, falling back to LLM for: "me! I made the original bot 🙂"
+[2026-02-13 19:33:55] [INFO] [Gate] LLM fallback result: engage=false, reason="Message is a personal statement without a request or question for the bot.", confidence=0.9
+[2026-02-13 19:33:55] [INFO] [Orchestrator] Layer 1 (Gate): engage=false, reason="Message is a personal statement without a request or question for the bot.", confidence=0.9, time=1007ms
+[2026-02-13 19:33:55] [INFO] [Orchestrator] Total thinking pipeline: 1007ms (ignored)
+[2026-02-13 19:35:56] [INFO] [Bot] Received SIGTERM, shutting down gracefully... Uptime: 15320s
+[2026-02-13 19:35:56] [INFO] [Bot] Shutdown stats: 14 messages processed, 0 errors, 37 tool types used
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: brave_search from brave_search.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: calculator
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: calculator from calculator.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: code_runner
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: code_runner from code_runner.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: define_word
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: define_word from define_word.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: generate_image from generate_image.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: recall
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: recall from recall.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: remember
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: remember from remember.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: summarize_url
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: summarize_url from summarize_url.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: tavily_search from tavily_search.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Registered tool: timestamp
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded tool: timestamp from timestamp.js
+[2026-02-13 19:36:02] [INFO] [ToolRegistry] Loaded 10 tools
+[2026-02-13 19:36:02] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 19:36:02] [INFO] [Bot] 5-layer thinking system enabled with 10 tools
+[2026-02-13 19:36:02] [INFO] [Health] Health server listening on http://127.0.0.1:3870/health
+[2026-02-13 19:36:02] [INFO] [Bot] Slash commands registered
+[2026-02-13 19:36:02] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 19:36:02] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

@@ -49,6 +49,11 @@ async function relevanceGate(message, context) {
   }
 
   // ── Heuristic: Likely engage ──
+  // If the bot recently spoke in this channel, the conversation is active — engage
+  if (context.botRecentlySpokeInChannel) {
+    logger.info('Gate', `Heuristic match: "active conversation" for ${context.userName} (bot spoke recently in channel)`);
+    return { engage: true, reason: 'Active conversation — bot recently spoke in this channel', confidence: 0.85 };
+  }
   if (channelId === gptChannelId && content.endsWith('?')) {
     logger.info('Gate', 'Heuristic match: "question in #gpt channel"');
     return { engage: true, reason: 'Question in #gpt channel', confidence: 0.8 };
@@ -58,10 +63,15 @@ async function relevanceGate(message, context) {
   logger.info('Gate', `No heuristic matched, falling back to LLM for: "${content.slice(0, 60)}"`);
   try {
     const gateModel = process.env.GATE_MODEL || 'gpt-4.1-mini';
+    // Include recent bot message for context so LLM knows if this is a reply to the bot
+    const recentBotMsg = context.lastBotMessageInChannel;
+    const contextHint = recentBotMsg
+      ? `\nThe bot's most recent message in this channel (sent ${Math.round((Date.now() - recentBotMsg.timestamp) / 1000)}s ago): "${recentBotMsg.content?.slice(0, 150)}"`
+      : '';
     const result = await withRetry(() => thinkWithModel([
       {
         role: 'system',
-        content: 'Decide if a Discord AI bot should respond. Return JSON: {"engage":true/false,"reason":"brief","confidence":0.0-1.0}. Bias toward NOT responding unless the message invites bot input.',
+        content: `Decide if a Discord AI bot should respond. Return JSON: {"engage":true/false,"reason":"brief","confidence":0.0-1.0}. Consider whether the message is a natural continuation of an ongoing conversation with the bot.${contextHint}`,
       },
       {
         role: 'user',

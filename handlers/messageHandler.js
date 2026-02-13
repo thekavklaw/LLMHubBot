@@ -268,6 +268,20 @@ async function processMessage(message, content, mergedAttachments) {
       const repliesToBot = message.reference?.messageId &&
         message.channel.messages?.cache?.get(message.reference.messageId)?.author?.id === botId;
 
+      // Check if the bot recently spoke in this channel (active conversation detection)
+      let botRecentlySpokeInChannel = false;
+      let lastBotMessageInChannel = null;
+      try {
+        const recentMessages = message.channel.messages?.cache
+          ?.filter(m => m.author?.id === botId && Date.now() - m.createdTimestamp < 120000)
+          ?.sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+        if (recentMessages?.size > 0) {
+          botRecentlySpokeInChannel = true;
+          const lastMsg = recentMessages.first();
+          lastBotMessageInChannel = { content: lastMsg.content, timestamp: lastMsg.createdTimestamp };
+        }
+      } catch (_) {}
+
       const stopTyping = startTyping(message.channel);
 
       // "Still thinking..." message after 5s
@@ -288,6 +302,8 @@ async function processMessage(message, content, mergedAttachments) {
             inThread,
             mentionsBot,
             repliesToBot,
+            botRecentlySpokeInChannel,
+            lastBotMessageInChannel,
             gptChannelId: config.gptChannelId,
           }),
           priority
