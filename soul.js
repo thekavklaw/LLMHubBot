@@ -44,6 +44,20 @@ async function getSystemPrompt(channelId, userId, currentMessage, preloadedMemor
   return parts.join('\n');
 }
 
+/** Emotional tone guidance map (used by layer3-execute). */
+const EMOTION_GUIDANCE = {
+  frustrated: "The user seems frustrated. Be extra patient, acknowledge the difficulty, and be precise.",
+  confused: "The user seems confused. Start from basics, use analogies, go step by step.",
+  excited: "The user is excited! Match their energy while being accurate.",
+  appreciative: "The user appreciated something. Acknowledge it naturally, don't be overly modest.",
+  curious: "The user is curious. Encourage exploration, suggest related topics.",
+};
+
+function getEmotionGuidance(emotion) {
+  if (!emotion || emotion === 'neutral') return null;
+  return EMOTION_GUIDANCE[emotion] || null;
+}
+
 function getSoulConfig() {
   return {
     name: 'LLMHub',
@@ -100,4 +114,4 @@ Write ONLY the content that goes under "## What I've Learned" — no heading, ju
   }
 }
 
-module.exports = { getSystemPrompt, getSoulConfig, reflectAndUpdate };
+module.exports = { getSystemPrompt, getSoulConfig, reflectAndUpdate, getEmotionGuidance };

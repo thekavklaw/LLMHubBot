@@ -172,7 +172,15 @@ async function checkTokenBudget(channelId) {
 
   try {
     const summary = await generateResponse([
-      { role: 'system', content: `Summarize this conversation concisely in 2-3 sentences. IMPORTANT: Preserve key facts, specific user names, and any decisions or preferences mentioned. Include a "highlights" note if anything particularly notable happened (e.g., user asked for help, shared a preference, a tool was used).${prevSummary}` },
+      { role: 'system', content: `Summarize this conversation, preserving:
+1. Key facts and decisions made
+2. The user's emotional tone and preferences expressed
+3. Any commitments or promises made by either party
+4. The original topic and how it evolved
+5. Specific names, numbers, URLs, or code mentioned
+6. What the user seemed most interested in or passionate about
+
+Keep the summary conversational, not clinical. Write it as if briefing someone who needs to continue this conversation seamlessly. Aim for 3-5 sentences.${prevSummary}` },
       { role: 'user', content: oldText },
     ], { model: config.miniModel || 'gpt-4.1-mini', maxTokens: 300, temperature: 0.3, tools: false });
 

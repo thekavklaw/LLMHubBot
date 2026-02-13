@@ -26,11 +26,11 @@ function getModelParams(intent) {
 
 /** Emotional tone guidance for system prompt. */
 const TONE_GUIDANCE = {
-  frustrated: 'The user seems frustrated. Be extra patient and clear. Acknowledge their frustration.',
-  confused: 'The user seems confused. Explain step by step. Use simple language.',
-  appreciative: 'The user is happy. Keep the positive momentum.',
-  excited: 'The user is excited! Match their energy.',
-  curious: 'The user is curious. Be thorough and engaging.',
+  frustrated: 'The user seems frustrated. Be extra patient, acknowledge the difficulty, and be precise.',
+  confused: 'The user seems confused. Start from basics, use analogies, go step by step.',
+  excited: 'The user is excited! Match their energy while being accurate.',
+  appreciative: 'The user appreciated something. Acknowledge it naturally, don\'t be overly modest.',
+  curious: 'The user is curious. Encourage exploration, suggest related topics.',
 };
 
 /**
