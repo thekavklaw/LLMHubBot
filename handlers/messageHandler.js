@@ -1,6 +1,9 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('../soul');
 const { generateResponse, generateImage } = require('../openai-client');
+
+let _agentLoop = null;
+function setAgentLoop(loop) { _agentLoop = loop; }
 const { addMessage, getContext, getRecentContextMessages, withChannelLock } = require('../context');
 const { logMessage, getState, setState } = require('../db');
 const { shouldRespond } = require('../relevance');
@@ -211,7 +214,10 @@ async function handleMessage(message) {
     // ── Route by Decision ──
     const soulConfig = getSoulConfig();
 
-    if (decision.action === 'search_and_respond') {
+    // Use agent loop if enabled — it handles tool calling (search, image gen, etc.) automatically
+    if (_agentLoop && config.enableAgentLoop) {
+      await handleAgentResponse(message, channelId, userId, userName, soulConfig);
+    } else if (decision.action === 'search_and_respond') {
       await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig);
     } else if (decision.action === 'generate_image') {
       await handleGenerateImage(message, channelId, userId, userName, decision);
@@ -425,4 +431,75 @@ async function handleRespondWithImage(message, channelId, userId, userName, deci
   }).catch(() => {});
 }
 
-module.exports = { handleMessage, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };
+/**
+ * Agent loop response — GPT decides when to use tools (search, image gen, etc.)
+ */
+async function handleAgentResponse(message, channelId, userId, userName, soulConfig) {
+  try { await message.channel.sendTyping(); } catch (_) {}
+
+  // Keep typing indicator alive during agent loop
+  const typingInterval = setInterval(() => {
+    message.channel.sendTyping().catch(() => {});
+  }, 8000);
+
+  try {
+    const result = await apiQueue.enqueue(async () => {
+      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+      const contextMessages = getContext(channelId);
+      const context = { userId, userName, channelId, generatedImages: [] };
+
+      return Promise.race([
+        _agentLoop.run(contextMessages, systemPrompt, context),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.agentLoopTimeout || 60000)),
+      ]);
+    });
+
+    clearInterval(typingInterval);
+
+    if (result.toolsUsed.length > 0) {
+      logger.info('AgentLoop', `Used ${result.toolsUsed.length} tools in ${result.iterations} iterations`);
+    }
+
+    if (!result.text && result.images.length === 0) return;
+
+    const outMod = await checkOutput(result.text || '', channelId);
+    if (!outMod.safe) {
+      await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
+      return;
+    }
+
+    addMessage(channelId, 'assistant', result.text || '[image]');
+    logMessage(channelId, null, 'LLMHub', 'assistant', result.text || '[image]');
+
+    // Build attachments from generated images
+    const files = [];
+    for (let i = 0; i < result.images.length; i++) {
+      const img = result.images[i];
+      if (img.image_buffer) {
+        const buf = Buffer.from(img.image_buffer, 'base64');
+        files.push(new AttachmentBuilder(buf, { name: `generated_${i + 1}.png` }));
+        recordImageGeneration(userId);
+      }
+    }
+
+    if (result.text) {
+      const parts = splitMessage(result.text);
+      // Send all but last without files
+      for (let i = 0; i < parts.length - 1; i++) {
+        await message.channel.send(parts[i]);
+      }
+      // Send last part with any image attachments
+      await message.channel.send({
+        content: parts[parts.length - 1],
+        files: files.length > 0 ? files : undefined,
+      });
+    } else if (files.length > 0) {
+      await message.channel.send({ files });
+    }
+  } catch (err) {
+    clearInterval(typingInterval);
+    throw err;
+  }
+}
+
+module.exports = { handleMessage, setAgentLoop, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };

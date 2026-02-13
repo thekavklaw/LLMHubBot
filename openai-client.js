@@ -32,7 +32,7 @@ async function generateResponse(messages, config = {}) {
       model: config.model || 'gpt-5.2',
       messages,
       temperature: config.temperature ?? 0.8,
-      max_tokens: config.maxTokens || 1000,
+      max_completion_tokens: config.maxTokens || 1000,
     };
 
     if (useTools) {
@@ -118,10 +118,39 @@ async function thinkWithModel(messages, model = 'gpt-4.1-mini') {
     model,
     messages,
     temperature: 0.2,
-    max_tokens: 300,
+    max_completion_tokens: 300,
     response_format: { type: 'json_object' },
   });
   return completion.choices[0]?.message?.content || '';
 }
 
-module.exports = { generateResponse, generateImage, thinkWithModel };
+/**
+ * Create a chat completion with optional tool calling support.
+ * Returns the raw message object (with potential tool_calls).
+ * @param {Array} messages - OpenAI message array
+ * @param {Array} tools - OpenAI tools array (empty = no tools)
+ * @param {Object} opts - {model, temperature, maxTokens}
+ * @returns {Object} message object with .content and optional .tool_calls
+ */
+async function createChatCompletion(messages, tools = [], opts = {}) {
+  const params = {
+    model: opts.model || process.env.MODEL || 'gpt-5.2',
+    messages,
+    temperature: opts.temperature ?? 0.8,
+    max_completion_tokens: opts.maxTokens || 1000,
+  };
+
+  if (tools && tools.length > 0) {
+    params.tools = tools;
+    params.tool_choice = 'auto';
+  }
+
+  const completion = await openai.chat.completions.create(params);
+  const msg = completion.choices[0]?.message;
+  return {
+    content: msg?.content || '',
+    tool_calls: msg?.tool_calls || null,
+  };
+}
+
+module.exports = { generateResponse, generateImage, thinkWithModel, createChatCompletion };

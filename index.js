@@ -2,8 +2,11 @@ const config = require('./config');
 const logger = require('./logger');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getState, setState } = require('./db');
-const { handleMessage } = require('./handlers/messageHandler');
+const { handleMessage, setAgentLoop } = require('./handlers/messageHandler');
 const { handleInteraction } = require('./handlers/interactionHandler');
+const ToolRegistry = require('./tools/registry');
+const AgentLoop = require('./agent-loop');
+const openaiClient = require('./openai-client');
 
 // ── Global error handlers ──
 process.on('unhandledRejection', (reason) => {
@@ -78,6 +81,15 @@ async function sendStartupEmbed() {
   } catch (err) {
     logger.error('Bot', 'Startup embed error:', err);
   }
+}
+
+// ── Initialize Tool Registry & Agent Loop ──
+if (config.enableAgentLoop) {
+  const registry = new ToolRegistry();
+  registry.loadAll();
+  const agentLoop = new AgentLoop(registry, openaiClient, config);
+  setAgentLoop(agentLoop);
+  logger.info('Bot', `Agent loop enabled with ${registry.listTools().length} tools`);
 }
 
 // ── Register handlers ──

@@ -33,3 +33,26 @@
 [2026-02-13 06:00:30] [INFO] [Bot] Slash commands registered
 [2026-02-13 06:00:30] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 06:00:30] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 06:06:28] [INFO] [Thinking] Decision: action=generate_image tone=helpful confidence=1 — User explicitly requested an image of a cat, which fits the criteria for image generation.
+[2026-02-13 06:08:27] [INFO] [Thinking] Decision: action=respond tone=casual confidence=1 — User greeted the bot and indicated this is the main channel for chatting, so a friendly acknowledgment is appropriate.
+[2026-02-13 06:08:27] [ERROR] [OpenAI] Error: 400 Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.
+[2026-02-13 06:08:27] [ERROR] [MessageHandler] Error: Error: 400 Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.
+    at APIError.generate (/opt/llmhub-bot/node_modules/openai/error.js:45:20)
+    at OpenAI.makeStatusError (/opt/llmhub-bot/node_modules/openai/core.js:302:33)
+    at OpenAI.makeRequest (/opt/llmhub-bot/node_modules/openai/core.js:346:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateResponse (/opt/llmhub-bot/openai-client.js:43:22)
+    at async TaskQueue._process (/opt/llmhub-bot/queue.js:26:22)
+[2026-02-13 06:13:27] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:13:27] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:13:27] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:13:27] [INFO] [ToolRegistry] Loaded 3 tools
+[2026-02-13 06:13:30] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 06:13:30] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:13:30] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:13:30] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:13:30] [INFO] [ToolRegistry] Loaded 3 tools
+[2026-02-13 06:13:30] [INFO] [Bot] Agent loop enabled with 3 tools
+[2026-02-13 06:13:31] [INFO] [Bot] Slash commands registered
+[2026-02-13 06:13:31] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 06:13:31] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

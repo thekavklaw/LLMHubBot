@@ -64,6 +64,12 @@ const config = {
   imageModel: process.env.IMAGE_MODEL || 'gpt-image-1',
   maxImagesPerUserPerHour: parseInt(process.env.MAX_IMAGES_PER_USER_PER_HOUR || '10', 10),
 
+  // Agent loop
+  enableAgentLoop: process.env.ENABLE_AGENT_LOOP === 'true',
+  maxAgentIterations: parseInt(process.env.MAX_AGENT_ITERATIONS || '10', 10),
+  agentLoopTimeout: parseInt(process.env.AGENT_LOOP_TIMEOUT || '60000', 10),
+  tavilyApiKey: process.env.TAVILY_API_KEY || '',
+
   // Feature flags
   features: {
     memory: true,
