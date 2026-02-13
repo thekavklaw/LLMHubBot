@@ -95,10 +95,31 @@ async function handleMessage(message) {
     trackUser(userId, userName, displayName);
     userNameToId.set(userName, userId);
 
-    addMessage(channelId, 'user', message.content, userName);
+    // Build content: string or array (for vision)
+    let userContent;
+    if (imageUrls.length > 0) {
+      userContent = [];
+      if (message.content.trim()) userContent.push({ type: 'text', text: message.content });
+      for (const url of imageUrls) {
+        userContent.push({ type: 'image_url', image_url: { url } });
+      }
+    } else {
+      userContent = message.content;
+    }
+
+    addMessage(channelId, 'user', userContent, userName);
     logMessage(channelId, userId, userName, 'user', message.content);
 
-    if (message.content.trim().length < 1) return;
+    // Extract image attachments for vision
+    const IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+    const imageUrls = [...message.attachments.values()]
+      .filter(a => {
+        const ext = (a.name || '').split('.').pop()?.toLowerCase();
+        return IMAGE_TYPES.includes(ext) || (a.contentType && a.contentType.startsWith('image/'));
+      })
+      .map(a => a.url);
+
+    if (message.content.trim().length < 1 && imageUrls.length === 0) return;
 
     const rateResult = checkRateLimit(userId, channelId, inThread, message.member);
     if (!rateResult.allowed) {
@@ -113,7 +134,7 @@ async function handleMessage(message) {
       return;
     }
 
-    const modResult = await checkMessage(message);
+    const modResult = await checkMessage(message, imageUrls);
     if (!modResult.safe) return;
 
     messageCount++;

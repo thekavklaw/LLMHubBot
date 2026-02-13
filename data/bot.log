@@ -25,3 +25,7 @@
 [2026-02-13 05:32:53] [INFO] [Bot] Slash commands registered
 [2026-02-13 05:32:54] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 05:32:54] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 05:54:47] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 05:54:48] [INFO] [Bot] Slash commands registered
+[2026-02-13 05:54:48] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 05:54:48] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

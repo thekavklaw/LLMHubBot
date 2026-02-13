@@ -32,9 +32,18 @@ async function registerCommands() {
     const chatCmd = new SlashCommandBuilder()
       .setName('chat')
       .setDescription('Start a conversation thread with LLMHub');
+    const imagineCmd = new SlashCommandBuilder()
+      .setName('imagine')
+      .setDescription('Generate an image from a text prompt')
+      .addStringOption(opt => opt.setName('prompt').setDescription('What to generate').setRequired(true))
+      .addStringOption(opt => opt.setName('size').setDescription('Image size').addChoices(
+        { name: '1024×1024 (Square)', value: '1024x1024' },
+        { name: '1536×1024 (Landscape)', value: '1536x1024' },
+        { name: '1024×1536 (Portrait)', value: '1024x1536' },
+      ));
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {

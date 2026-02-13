@@ -23,27 +23,48 @@ const insertLogStmt = db.prepare(
   'INSERT INTO moderation_log (user_id, channel_id, content_snippet, categories, action) VALUES (?, ?, ?, ?, ?)'
 );
 
-const FLAGGED_CATEGORIES = ['hate', 'harassment', 'self-harm', 'sexual', 'violence'];
+const FLAGGED_CATEGORIES = ['hate', 'harassment', 'self-harm', 'sexual', 'violence', 'illicit', 'illicit/violent'];
 
-async function moderate(content) {
-  if (!config.moderationEnabled || !content || content.trim().length < 2) {
+/**
+ * Moderate content using omni-moderation-latest (supports text + images).
+ * @param {string} content - text content
+ * @param {string[]} imageUrls - optional image URLs
+ */
+async function moderate(content, imageUrls = []) {
+  if (!config.moderationEnabled) {
+    return { safe: true, categories: [], scores: {} };
+  }
+  if ((!content || content.trim().length < 2) && imageUrls.length === 0) {
     return { safe: true, categories: [], scores: {} };
   }
 
   try {
-    const result = await openai.moderations.create({ input: content });
+    // Build multi-modal input for omni-moderation
+    const input = [];
+    if (content && content.trim().length >= 2) {
+      input.push({ type: 'text', text: content });
+    }
+    for (const url of imageUrls) {
+      input.push({ type: 'image_url', image_url: { url } });
+    }
+
+    const result = await openai.moderations.create({
+      model: 'omni-moderation-latest',
+      input: input.length === 1 && input[0].type === 'text' ? content : input,
+    });
+
     const res = result.results[0];
     const flaggedCats = [];
     const scores = {};
 
     for (const cat of FLAGGED_CATEGORIES) {
       for (const [key, flagged] of Object.entries(res.categories)) {
-        if (key.startsWith(cat) && flagged) {
-          if (!flaggedCats.includes(cat)) flaggedCats.push(cat);
+        if (key === cat || key.startsWith(cat + '/')) {
+          if (flagged && !flaggedCats.includes(cat)) flaggedCats.push(cat);
         }
       }
       for (const [key, score] of Object.entries(res.category_scores)) {
-        if (key.startsWith(cat)) scores[key] = score;
+        if (key === cat || key.startsWith(cat + '/')) scores[key] = score;
       }
     }
 
@@ -54,8 +75,8 @@ async function moderate(content) {
   }
 }
 
-async function checkMessage(message) {
-  const result = await moderate(message.content);
+async function checkMessage(message, imageUrls = []) {
+  const result = await moderate(message.content, imageUrls);
   if (!result.safe) {
     logger.warn('Moderator', `Flagged input from ${message.author.username}: [${result.categories.join(', ')}]`);
     insertLogStmt.run(message.author.id, message.channel.id, message.content.slice(0, 200), JSON.stringify(result.categories), 'blocked_input');

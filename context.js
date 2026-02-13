@@ -1,15 +1,16 @@
 const { generateResponse } = require('./openai-client');
+const { countMessagesTokens } = require('./tokenizer');
 const { saveSummary, getLatestSummary } = require('./db');
 const config = require('./config');
 const logger = require('./logger');
 
-const WINDOW_SIZE = config.contextWindowSize;
-const SUMMARY_INTERVAL = config.summaryInterval;
+const MAX_CONTEXT_TOKENS = 6000;
+const SUMMARIZE_OLDEST_PERCENT = 0.6;
 
 // channelId -> { messages, messageCount, summary }
 const contexts = new Map();
 
-// Per-channel locks for context updates
+// Per-channel locks
 const channelLocks = new Map();
 
 async function withChannelLock(channelId, fn) {
@@ -34,32 +35,51 @@ function ensureContext(channelId) {
 
 function addMessage(channelId, role, content, userName) {
   const ctx = ensureContext(channelId);
-  ctx.messages.push({ role, content, name: userName ? userName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) : undefined });
-  if (ctx.messages.length > WINDOW_SIZE) {
-    ctx.messages = ctx.messages.slice(-WINDOW_SIZE);
-  }
+  ctx.messages.push({
+    role,
+    content,
+    name: userName ? userName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) : undefined,
+  });
   ctx.messageCount++;
 
-  // Non-blocking summary generation
-  if (channelId === config.gptChannelId && ctx.messageCount % SUMMARY_INTERVAL === 0) {
-    const range = `${ctx.messageCount - SUMMARY_INTERVAL + 1}-${ctx.messageCount}`;
-    updateSummary(channelId, range).catch(err => logger.error('Context', 'Summary error:', err));
-  }
+  // Trigger token budget check (non-blocking)
+  checkTokenBudget(channelId).catch(err => logger.error('Context', 'Token budget error:', err));
 }
 
-async function updateSummary(channelId, messageRange) {
+/**
+ * Check if context exceeds token budget. If so, summarize oldest 60%.
+ */
+async function checkTokenBudget(channelId) {
   const ctx = ensureContext(channelId);
-  const msgs = ctx.messages.map(m => `${m.name || m.role}: ${m.content}`).join('\n');
-  const prevSummary = ctx.summary ? `\nPrevious summary: ${ctx.summary}` : '';
+  if (ctx.messages.length < 4) return; // not enough to summarize
 
-  const result = await generateResponse([
-    { role: 'system', content: `Summarize this conversation in 2-3 sentences. Focus on topics discussed, key points, and who said what.${prevSummary}` },
-    { role: 'user', content: msgs },
-  ], { model: config.miniModel, maxTokens: 200, temperature: 0.3 });
+  const tokens = countMessagesTokens(ctx.messages);
+  if (tokens <= MAX_CONTEXT_TOKENS) return;
 
-  ctx.summary = result;
-  saveSummary(channelId, result, messageRange || '');
-  logger.info('Context', `Summary updated for ${channelId}: ${result.slice(0, 80)}...`);
+  logger.info('Context', `Token budget exceeded for ${channelId}: ${tokens} > ${MAX_CONTEXT_TOKENS}. Summarizing...`);
+
+  const splitIdx = Math.ceil(ctx.messages.length * SUMMARIZE_OLDEST_PERCENT);
+  const oldMessages = ctx.messages.slice(0, splitIdx);
+  const keepMessages = ctx.messages.slice(splitIdx);
+
+  // Build text to summarize
+  const oldText = oldMessages.map(m => `${m.name || m.role}: ${typeof m.content === 'string' ? m.content : '[media]'}`).join('\n');
+  const prevSummary = ctx.summary ? `\nPrevious conversation summary: ${ctx.summary}` : '';
+
+  try {
+    const summary = await generateResponse([
+      { role: 'system', content: `Summarize this conversation concisely in 2-3 sentences. Include key topics, decisions, and who said what.${prevSummary}` },
+      { role: 'user', content: oldText },
+    ], { model: config.miniModel || 'gpt-4.1-mini', maxTokens: 300, temperature: 0.3, tools: false });
+
+    ctx.summary = summary;
+    ctx.messages = keepMessages;
+    const range = `${ctx.messageCount - oldMessages.length}-${ctx.messageCount}`;
+    saveSummary(channelId, summary, range);
+    logger.info('Context', `Summarized ${oldMessages.length} messages → ${summary.slice(0, 80)}...`);
+  } catch (err) {
+    logger.error('Context', 'Summarization failed:', err);
+  }
 }
 
 function getContext(channelId) {
