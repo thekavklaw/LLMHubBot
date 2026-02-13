@@ -1,12 +1,14 @@
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, ChannelType } = require('discord.js');
-const { getSystemPrompt, getSoulConfig } = require('./soul');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('./soul');
 const { generateResponse } = require('./openai-client');
 const { addMessage, getContext, getRecentContextMessages } = require('./context');
-const { logMessage } = require('./db');
+const { logMessage, getState, setState } = require('./db');
 const { createChatThread } = require('./threads');
 const { shouldRespond } = require('./relevance');
+const { storeMemory, extractFacts } = require('./memory');
+const { trackUser, updateProfilesFromFacts } = require('./users');
 
 const client = new Client({
   intents: [
@@ -18,6 +20,15 @@ const client = new Client({
 });
 
 const GPT_CHANNEL_ID = process.env.GPT_CHANNEL_ID;
+
+// ── Message counters ──
+// Per-channel counter for fact extraction (every 15)
+const channelMsgCounts = new Map();
+// Global counter for reflection (every 50)
+let globalMsgCount = parseInt(getState('global_msg_count') || '0', 10);
+
+// Track userName -> userId mapping for fact attribution
+const userNameToId = new Map();
 
 // ── Slash command registration ──
 async function registerCommands() {
@@ -60,20 +71,76 @@ function splitMessage(text, maxLen = 2000) {
   return parts;
 }
 
+// ── Fact extraction & memory pipeline ──
+async function runFactExtraction(channelId) {
+  try {
+    const recentMsgs = getRecentContextMessages(channelId);
+    if (recentMsgs.length < 5) return;
+
+    console.log(`[Memory] Extracting facts from ${recentMsgs.length} messages in ${channelId}...`);
+    const facts = await extractFacts(recentMsgs, channelId);
+    if (facts.length === 0) return;
+
+    console.log(`[Memory] Extracted ${facts.length} facts`);
+
+    // Store each fact as a memory
+    for (const fact of facts) {
+      const userId = fact.userName ? userNameToId.get(fact.userName) : null;
+      await storeMemory(fact.content, {
+        userId,
+        userName: fact.userName,
+        channelId,
+        category: fact.category,
+      });
+    }
+
+    // Update user profiles from facts
+    updateProfilesFromFacts(facts, userNameToId);
+  } catch (err) {
+    console.error('[Memory] Fact extraction pipeline error:', err.message);
+  }
+}
+
 // ── Handle messages ──
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (!isGptChannel(message.channel)) return;
 
   const channelId = message.channel.id;
+  const userId = message.author.id;
   const userName = message.author.username;
+  const displayName = message.member?.displayName || userName;
+
+  // Track user profile
+  trackUser(userId, userName, displayName);
+  userNameToId.set(userName, userId);
 
   // Log & add to context (always, even if we don't respond)
   addMessage(channelId, 'user', message.content, userName);
-  logMessage(channelId, message.author.id, userName, 'user', message.content);
+  logMessage(channelId, userId, userName, 'user', message.content);
 
   // Skip trivial messages before any processing
   if (message.content.trim().length < 1) return;
+
+  // ── Message counters for memory pipeline ──
+  const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
+  channelMsgCounts.set(channelId, chCount);
+  globalMsgCount++;
+  setState('global_msg_count', String(globalMsgCount));
+
+  // Every 15 messages per channel: extract facts
+  if (chCount % 15 === 0) {
+    runFactExtraction(channelId).catch(err =>
+      console.error('[Memory] Background extraction error:', err.message)
+    );
+  }
+
+  // Every 50 messages globally: reflect and update soul
+  if (globalMsgCount % 50 === 0) {
+    reflectAndUpdate().catch(err =>
+      console.error('[Soul] Background reflection error:', err.message)
+    );
+  }
 
   // Threads under #gpt: ALWAYS respond
   const alwaysRespond = isGptThread(message.channel);
@@ -84,13 +151,14 @@ client.on('messageCreate', async (message) => {
     const decision = await shouldRespond(message, recentMessages, client.user.id);
     console.log(`[Relevance] ${userName}: "${message.content.slice(0, 60)}" → respond=${decision.respond} (${decision.confidence}) — ${decision.reason}`);
 
-    if (!decision.respond) return; // Just logged context, don't reply
+    if (!decision.respond) return;
   }
 
-  // Build messages for OpenAI
+  // Build system prompt with soul + memories + user profile
   const config = getSoulConfig();
+  const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
   const messages = [
-    { role: 'system', content: getSystemPrompt() },
+    { role: 'system', content: systemPrompt },
     ...getContext(channelId),
   ];
 
@@ -133,6 +201,8 @@ client.on('interactionCreate', async (interaction) => {
 // ── Start ──
 client.once('ready', () => {
   console.log(`[Bot] Logged in as ${client.user.tag}`);
+  console.log(`[Bot] Phase 3 active: Memory, Users, Soul`);
+  console.log(`[Bot] Global message count: ${globalMsgCount}`);
 });
 
 registerCommands().catch(err => console.error('[Bot] Command registration failed:', err.message));
