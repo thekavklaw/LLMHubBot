@@ -56,3 +56,22 @@
 [2026-02-13 06:13:31] [INFO] [Bot] Slash commands registered
 [2026-02-13 06:13:31] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 06:13:31] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 06:13:54] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 06:13:54] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:13:54] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:13:54] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:13:54] [INFO] [ToolRegistry] Loaded 3 tools
+[2026-02-13 06:13:54] [INFO] [Bot] Agent loop enabled with 3 tools
+[2026-02-13 06:13:54] [INFO] [Bot] Slash commands registered
+[2026-02-13 06:13:55] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 06:13:55] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 06:18:57] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 06:18:58] [INFO] [ToolRegistry] Registered tool: brave_search
+[2026-02-13 06:18:58] [INFO] [ToolRegistry] Registered tool: generate_image
+[2026-02-13 06:18:58] [INFO] [ToolRegistry] Registered tool: tavily_search
+[2026-02-13 06:18:58] [INFO] [ToolRegistry] Loaded 3 tools
+[2026-02-13 06:18:58] [INFO] [Orchestrator] 5-layer thinking system initialized
+[2026-02-13 06:18:58] [INFO] [Bot] 5-layer thinking system enabled with 3 tools
+[2026-02-13 06:18:58] [INFO] [Bot] Slash commands registered
+[2026-02-13 06:19:00] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 06:19:00] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

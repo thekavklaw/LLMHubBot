@@ -2,10 +2,11 @@ const config = require('./config');
 const logger = require('./logger');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getState, setState } = require('./db');
-const { handleMessage, setAgentLoop } = require('./handlers/messageHandler');
+const { handleMessage, setAgentLoop, setOrchestrator } = require('./handlers/messageHandler');
 const { handleInteraction } = require('./handlers/interactionHandler');
 const ToolRegistry = require('./tools/registry');
 const AgentLoop = require('./agent-loop');
+const ThinkingOrchestrator = require('./thinking/orchestrator');
 const openaiClient = require('./openai-client');
 
 // ── Global error handlers ──
@@ -83,13 +84,25 @@ async function sendStartupEmbed() {
   }
 }
 
-// ── Initialize Tool Registry & Agent Loop ──
+// ── Initialize Tool Registry, Agent Loop & Thinking Orchestrator ──
+const registry = new ToolRegistry();
+registry.loadAll();
+
 if (config.enableAgentLoop) {
-  const registry = new ToolRegistry();
-  registry.loadAll();
   const agentLoop = new AgentLoop(registry, openaiClient, config);
   setAgentLoop(agentLoop);
-  logger.info('Bot', `Agent loop enabled with ${registry.listTools().length} tools`);
+
+  if (config.thinkingLayersEnabled) {
+    const orchestrator = new ThinkingOrchestrator({
+      toolRegistry: registry,
+      agentLoop,
+      config,
+    });
+    setOrchestrator(orchestrator);
+    logger.info('Bot', `5-layer thinking system enabled with ${registry.listTools().length} tools`);
+  } else {
+    logger.info('Bot', `Agent loop enabled with ${registry.listTools().length} tools`);
+  }
 }
 
 // ── Register handlers ──

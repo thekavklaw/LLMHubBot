@@ -70,6 +70,12 @@ const config = {
   agentLoopTimeout: parseInt(process.env.AGENT_LOOP_TIMEOUT || '60000', 10),
   tavilyApiKey: process.env.TAVILY_API_KEY || '',
 
+  // 5-Layer Thinking
+  thinkingLayersEnabled: process.env.THINKING_LAYERS_ENABLED !== 'false',
+  gateModel: process.env.GATE_MODEL || 'gpt-4.1-mini',
+  intentModel: process.env.INTENT_MODEL || 'gpt-4.1-mini',
+  reflectionIntervalLayers: parseInt(process.env.REFLECTION_INTERVAL || '5', 10),
+
   // Feature flags
   features: {
     memory: true,

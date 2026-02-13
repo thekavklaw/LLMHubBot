@@ -3,7 +3,9 @@ const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('../soul');
 const { generateResponse, generateImage } = require('../openai-client');
 
 let _agentLoop = null;
+let _orchestrator = null;
 function setAgentLoop(loop) { _agentLoop = loop; }
+function setOrchestrator(orch) { _orchestrator = orch; }
 const { addMessage, getContext, getRecentContextMessages, withChannelLock } = require('../context');
 const { logMessage, getState, setState } = require('../db');
 const { shouldRespond } = require('../relevance');
@@ -179,53 +181,113 @@ async function handleMessage(message) {
       reflectAndUpdate().catch(err => logger.error('BackgroundReflection', 'Error:', err));
     }
 
-    // ── Thinking Layer or Relevance Fallback ──
-    let decision;
-    const recentMessages = getRecentContextMessages(channelId);
+    // ── 5-Layer Thinking System or Legacy Fallback ──
+    if (_orchestrator && config.thinkingLayersEnabled) {
+      // New 5-layer system handles everything
+      const mentionsBot = message.mentions?.has(message.client.user.id);
+      const repliesToBot = message.reference?.messageId &&
+        message.channel.messages?.cache?.get(message.reference.messageId)?.author?.id === message.client.user.id;
 
-    if (config.enableThinking) {
-      // Get user profile and memories for thinking context
-      let userProfile = null;
-      try { userProfile = getProfile(userId); } catch (_) {}
+      try { await message.channel.sendTyping(); } catch (_) {}
 
-      let relevantMemories = [];
-      try { relevantMemories = await searchMemory(message.content, 3, 0.6); } catch (_) {}
+      const typingInterval = setInterval(() => {
+        message.channel.sendTyping().catch(() => {});
+      }, 8000);
 
-      decision = await think(recentMessages, userProfile, relevantMemories, inThread, message.client.user.id);
+      try {
+        const orchestratorResult = await apiQueue.enqueue(() =>
+          _orchestrator.process(message, {
+            userId,
+            userName,
+            displayName,
+            channelId,
+            botId: message.client.user.id,
+            inThread,
+            mentionsBot,
+            repliesToBot,
+            gptChannelId: config.gptChannelId,
+          })
+        );
 
-      if (decision.action === 'ignore') {
-        logger.debug('Thinking', `Ignoring message from ${userName}: ${decision.reasoning}`);
-        return;
-      }
-    } else {
-      // Fallback to old relevance check
-      if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
-        try {
-          const relevanceDecision = await shouldRespond(message, recentMessages, message.client.user.id);
-          logger.debug('Relevance', `${userName}: "${message.content.slice(0, 60)}" → respond=${relevanceDecision.respond} (${relevanceDecision.confidence}) — ${relevanceDecision.reason}`);
-          if (!relevanceDecision.respond) return;
-        } catch (err) {
-          logger.error('Relevance', 'Error:', err);
+        clearInterval(typingInterval);
+
+        if (orchestratorResult.action === 'ignore') {
+          logger.debug('Orchestrator', `Ignoring ${userName}: ${orchestratorResult.reason}`);
+          return;
         }
+
+        // Track image rate limits
+        if (orchestratorResult.images) {
+          for (const _ of orchestratorResult.images) {
+            recordImageGeneration(userId);
+          }
+        }
+
+        // Moderation check on text
+        if (orchestratorResult.text) {
+          const outMod = await checkOutput(orchestratorResult.text, channelId);
+          if (!outMod.safe) {
+            await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
+            return;
+          }
+        }
+
+        // Log to context + DB
+        addMessage(channelId, 'assistant', orchestratorResult.text || '[image]');
+        logMessage(channelId, null, 'LLMHub', 'assistant', orchestratorResult.text || '[image]');
+
+        // Send Discord messages
+        for (const msg of orchestratorResult.messages || []) {
+          await message.channel.send(msg);
+        }
+      } catch (err) {
+        clearInterval(typingInterval);
+        throw err;
       }
-      decision = { action: 'respond', tone: 'helpful', confidence: 0.5, image_prompt: null, search_query: null };
-    }
-
-    // ── Route by Decision ──
-    const soulConfig = getSoulConfig();
-
-    // Use agent loop if enabled — it handles tool calling (search, image gen, etc.) automatically
-    if (_agentLoop && config.enableAgentLoop) {
-      await handleAgentResponse(message, channelId, userId, userName, soulConfig);
-    } else if (decision.action === 'search_and_respond') {
-      await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig);
-    } else if (decision.action === 'generate_image') {
-      await handleGenerateImage(message, channelId, userId, userName, decision);
-    } else if (decision.action === 'respond_with_image') {
-      await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig);
     } else {
-      // Default: respond with text only
-      await handleTextResponse(message, channelId, userId, userName, soulConfig);
+      // ── Legacy: Thinking Layer or Relevance Fallback ──
+      let decision;
+      const recentMessages = getRecentContextMessages(channelId);
+
+      if (config.enableThinking) {
+        let userProfile = null;
+        try { userProfile = getProfile(userId); } catch (_) {}
+
+        let relevantMemories = [];
+        try { relevantMemories = await searchMemory(message.content, 3, 0.6); } catch (_) {}
+
+        decision = await think(recentMessages, userProfile, relevantMemories, inThread, message.client.user.id);
+
+        if (decision.action === 'ignore') {
+          logger.debug('Thinking', `Ignoring message from ${userName}: ${decision.reasoning}`);
+          return;
+        }
+      } else {
+        if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
+          try {
+            const relevanceDecision = await shouldRespond(message, recentMessages, message.client.user.id);
+            logger.debug('Relevance', `${userName}: "${message.content.slice(0, 60)}" → respond=${relevanceDecision.respond} (${relevanceDecision.confidence}) — ${relevanceDecision.reason}`);
+            if (!relevanceDecision.respond) return;
+          } catch (err) {
+            logger.error('Relevance', 'Error:', err);
+          }
+        }
+        decision = { action: 'respond', tone: 'helpful', confidence: 0.5, image_prompt: null, search_query: null };
+      }
+
+      const soulConfig = getSoulConfig();
+
+      if (_agentLoop && config.enableAgentLoop) {
+        await handleAgentResponse(message, channelId, userId, userName, soulConfig);
+      } else if (decision.action === 'search_and_respond') {
+        await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig);
+      } else if (decision.action === 'generate_image') {
+        await handleGenerateImage(message, channelId, userId, userName, decision);
+      } else if (decision.action === 'respond_with_image') {
+        await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig);
+      } else {
+        await handleTextResponse(message, channelId, userId, userName, soulConfig);
+      }
     }
 
   } catch (err) {
@@ -502,4 +564,4 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
   }
 }
 
-module.exports = { handleMessage, setAgentLoop, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };
+module.exports = { handleMessage, setAgentLoop, setOrchestrator, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };
