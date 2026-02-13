@@ -53,8 +53,14 @@ async function handleInteraction(interaction) {
   // Channel whitelist
   const allowedChannels = config.allowedChannelIds;
   if (allowedChannels.length > 0) {
-    const channelId = interaction.channel?.id;
-    const parentId = interaction.channel?.parentId;
+    // Fetch channel if not cached
+    let channel = interaction.channel;
+    if (!channel) {
+      try { channel = await interaction.client.channels.fetch(interaction.channelId); } catch (_) {}
+    }
+    const channelId = channel?.id || interaction.channelId;
+    const parentId = channel?.parentId;
+    logger.debug('Interaction', `Channel guard: channelId=${channelId}, parentId=${parentId}, allowed=${allowedChannels.join(',')}`);
     if (!allowedChannels.includes(channelId) && !allowedChannels.includes(parentId)) {
       return interaction.reply({ content: '❌ Commands are not available in this channel.', ephemeral: true });
     }

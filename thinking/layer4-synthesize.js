@@ -78,7 +78,9 @@ async function synthesize(result, intent, context) {
     return { action: 'ignore', reason: 'Empty result', messages: [], images: [] };
   }
 
-  const text = result.text || '';
+  let text = result.text || '';
+  // Strip markdown image syntax — images are sent as Discord attachments, not inline markdown
+  text = text.replace(/!\[[^\]]*\]\([^)]*\)\s*/g, '').trim();
   const parts = smartSplit(text);
   const totalLen = text.length;
   logger.info('Synthesize', `Output: ${parts.length} message(s), total ${totalLen} chars, ${result.images.length} image(s)`);
