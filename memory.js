@@ -5,7 +5,7 @@
  */
 
 const OpenAI = require('openai');
-const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories, searchFts, countUserUnconsolidatedMemories } = require('./db');
+const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories, searchFts, countUserUnconsolidatedMemories, touchMemory } = require('./db');
 const { appendDailyMemory, appendUserMemory } = require('./memory-files');
 const logger = require('./logger');
 const config = require('./config');
@@ -209,10 +209,18 @@ async function searchMemory(query, limit = 5, minSimilarity = 0.65, guildId = nu
       const memEmbedding = bufferToFloat32(mem.embedding);
       const sim = cosineSimilarity(queryEmbedding, memEmbedding);
       if (sim >= minSimilarity) {
-        // Relevance decay: weight recent memories higher
-        const daysSinceCreated = (Date.now() - new Date(mem.timestamp).getTime()) / 86400000;
-        const decayedScore = sim * (1 / (1 + daysSinceCreated * 0.01));
+        // Relevance decay: use last_accessed if available, else created_at
+        const lastAccessed = mem.last_accessed && mem.last_accessed > 0
+          ? mem.last_accessed
+          : new Date(mem.timestamp).getTime();
+        const daysSinceAccess = (Date.now() - lastAccessed) / 86400000;
+        const decayFactor = Math.exp(-daysSinceAccess / 90); // 90-day half-life
+        let decayedScore = sim * decayFactor;
+        // Reinforcement boost: frequently accessed memories score higher
+        const reinforcement = mem.reinforcement_count || 0;
+        decayedScore *= (1 + 0.05 * Math.min(reinforcement, 10));
         scored.push({
+          id: mem.id,
           content: mem.content,
           similarity: sim,
           decayedScore,
@@ -248,7 +256,7 @@ async function hybridSearch(query, limit = 5, minSimilarity = 0.55, guildId = nu
     // Build a map keyed by content
     const merged = new Map();
 
-    // Add vector results
+    // Add vector results (includes id for touch tracking)
     for (const r of vectorResults) {
       merged.set(r.content, {
         ...r,
@@ -285,7 +293,16 @@ async function hybridSearch(query, limit = 5, minSimilarity = 0.55, guildId = nu
     }));
 
     results.sort((a, b) => b.finalScore - a.finalScore);
-    return results.slice(0, limit);
+    const topResults = results.slice(0, limit);
+
+    // Touch accessed memories (update last_accessed + reinforcement)
+    for (const r of topResults) {
+      if (r.id) {
+        try { touchMemory(r.id); } catch (_) {}
+      }
+    }
+
+    return topResults;
   } catch (err) {
     logger.error('Memory', 'Hybrid search error:', err);
     // Fallback to vector-only

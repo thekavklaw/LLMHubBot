@@ -85,7 +85,7 @@ async function execute(message, context, intent) {
     const boostMemories = await hybridSearch(boostQuery, 3, 0.6, context.guildId);
     if (boostMemories.length > 0) {
       const memoryLines = boostMemories.map(m => `- ${m.content}`).join('\n');
-      promptParts.push(`\n## Relevant Memories About This User\n${memoryLines}`);
+      promptParts.push(`\n## Relevant Memories About This User\n${memoryLines}\n\nIf any of these memories are directly relevant to what the user is saying, reference them naturally. Use phrases like "If I remember right...", "You mentioned before...", etc. Don't force it.`);
       logger.debug('Execute', `Memory boost: injected ${boostMemories.length} memories`);
     }
   } catch (err) {

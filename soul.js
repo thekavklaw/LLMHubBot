@@ -9,6 +9,25 @@ const logger = require('./logger');
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 const SOUL_PATH = path.join(__dirname, 'data', 'soul.md');
+const CHANGELOG_PATH = path.join(__dirname, 'data', 'changelog.md');
+
+// Cache changelog on load — only re-read on restart (which is exactly when it changes)
+let _changelogCache = null;
+function getChangelog() {
+  if (_changelogCache !== null) return _changelogCache;
+  try {
+    const raw = fs.readFileSync(CHANGELOG_PATH, 'utf-8');
+    // Only keep the most recent entry to save tokens
+    const entries = raw.split(/^## \d{4}-/m);
+    const header = entries[0]; // "# Brain Changelog\n..."
+    const latest = entries[1] ? '## ' + entries[1].split(/^## \d{4}-/m)[0].trim() : '';
+    _changelogCache = latest ? `\n## What Changed in My Last Update\n${latest}` : '';
+    logger.info('Soul', `Changelog loaded (${_changelogCache.length} chars, latest entry only)`);
+  } catch {
+    _changelogCache = '';
+  }
+  return _changelogCache;
+}
 
 function getSoulContent() {
   try { return fs.readFileSync(SOUL_PATH, 'utf-8'); } catch { return ''; }
@@ -18,6 +37,9 @@ async function getSystemPrompt(channelId, userId, currentMessage, preloadedMemor
   const parts = [];
   const soul = getSoulContent();
   if (soul) parts.push(soul);
+
+  const changelog = getChangelog();
+  if (changelog) parts.push(changelog);
 
   parts.push(`\nYou're in a Discord group conversation. Keep responses concise (under 2000 chars). Use markdown sparingly. Match the energy of the conversation. Don't respond to everything — only when you can genuinely add value.`);
 
@@ -30,6 +52,7 @@ async function getSystemPrompt(channelId, userId, currentMessage, preloadedMemor
           `- ${m.content}${m.userName ? ` (about ${m.userName})` : ''}`
         ).join('\n');
         parts.push(`\n## Relevant Things I Remember\n${memText}`);
+        parts.push(`\nIf you have memory context about this user, reference it naturally when relevant. Use phrases like "If I remember right, you mentioned...", "You told me before that...", "I recall you...", or "Based on what you've shared...". Don't force it — only when it genuinely connects to what they're saying.`);
       }
     } catch (err) {
       logger.error('Soul', 'Memory search error:', err);

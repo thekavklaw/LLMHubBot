@@ -7,7 +7,10 @@
 const logger = require('../logger');
 const { hybridSearch } = require('../memory');
 const { getProfile, formatProfileForPrompt } = require('../users');
-const { getUserSettings } = require('../db');
+const { getUserSettings, getUserProfile } = require('../db');
+
+// ── Return-user tracking (in-memory last_seen map) ──
+const lastSeenMap = new Map();
 
 /**
  * Detect emotional tone from message content.
@@ -121,6 +124,20 @@ async function analyzeIntent(message, context, gate) {
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 
+  // Return-user detection: check if 24h+ since last interaction
+  let returnUserContext = '';
+  const now = Date.now();
+  const lastSeen = lastSeenMap.get(userId);
+  const hoursSinceLastSeen = lastSeen ? (now - lastSeen) / 3600000 : Infinity;
+  lastSeenMap.set(userId, now);
+
+  if (hoursSinceLastSeen >= 24 && memories.length > 0) {
+    const recentTopics = memories.slice(0, 3).map(m => m.content).join('; ');
+    const daysAway = Math.floor(hoursSinceLastSeen / 24);
+    returnUserContext = `This user last interacted ${daysAway} day(s) ago. Their recent topics were: ${recentTopics}. Consider naturally referencing past context if relevant, but don't force it.`;
+    logger.info('Intent', `Return user detected: ${userName} (${daysAway}d away)`);
+  }
+
   logger.info('Intent', `Heuristic intent="${classification.intent}", tone="${classification.tone}", emotion="${emotionalTone}", memories=${memories.length}, profile=${profile ? 'found' : 'none'}`);
 
   // Load user settings
@@ -149,7 +166,7 @@ async function analyzeIntent(message, context, gate) {
     memoryContext: memories,
     userContext: profile,
     userSettings,
-    keyContext: '',
+    keyContext: returnUserContext,
     approach: '',
   };
 }

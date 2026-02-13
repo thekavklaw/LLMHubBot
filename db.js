@@ -129,6 +129,11 @@ try { db.exec(`ALTER TABLE memories ADD COLUMN tier TEXT DEFAULT 'observation'`)
 try { db.exec(`ALTER TABLE memories ADD COLUMN significance REAL DEFAULT 0.5`); logger.info('DB', 'Added significance column'); } catch (_) {}
 try { db.exec(`ALTER TABLE memories ADD COLUMN consolidated INTEGER DEFAULT 0`); logger.info('DB', 'Added consolidated column'); } catch (_) {}
 
+// Phase 3 migrations: memory decay, soft-delete
+try { db.exec(`ALTER TABLE memories ADD COLUMN last_accessed INTEGER DEFAULT 0`); logger.info('DB', 'Added last_accessed column'); } catch (_) {}
+try { db.exec(`ALTER TABLE memories ADD COLUMN reinforcement_count INTEGER DEFAULT 0`); logger.info('DB', 'Added reinforcement_count column'); } catch (_) {}
+try { db.exec(`ALTER TABLE memories ADD COLUMN forgotten INTEGER DEFAULT 0`); logger.info('DB', 'Added forgotten column'); } catch (_) {}
+
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_tier ON memories(tier)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_guild ON memories(guild_id)`);
@@ -198,13 +203,13 @@ const allMemoriesStmt = db.prepare(
   'SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata FROM memories'
 );
 const recentMemoriesStmt = db.prepare(
-  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata
-   FROM memories WHERE timestamp >= datetime('now', ?)
+  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata, last_accessed, reinforcement_count
+   FROM memories WHERE timestamp >= datetime('now', ?) AND forgotten = 0
    ORDER BY timestamp DESC`
 );
 const recentMemoriesLimitedStmt = db.prepare(
-  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata
-   FROM memories WHERE timestamp >= datetime('now', ?)
+  `SELECT id, content, embedding, user_id, user_name, channel_id, category, timestamp, metadata, last_accessed, reinforcement_count
+   FROM memories WHERE timestamp >= datetime('now', ?) AND forgotten = 0
    ORDER BY timestamp DESC LIMIT ?`
 );
 const memoryCountStmt = db.prepare('SELECT COUNT(*) as cnt FROM memories');
@@ -444,6 +449,46 @@ function getMessageCount() {
   return messageCountStmt.get();
 }
 
+// ── Phase 3: Memory command helpers ──
+const getUserMemoriesStmt = db.prepare(
+  `SELECT id, content, category, timestamp, significance, tier, consolidated
+   FROM memories WHERE user_id = ? AND forgotten = 0 ORDER BY tier DESC, timestamp DESC`
+);
+const softDeleteMemoryStmt = db.prepare('UPDATE memories SET forgotten = 1 WHERE id = ?');
+const deleteFtsRowStmt = db.prepare('DELETE FROM memory_fts WHERE rowid = ?');
+const touchMemoryStmt = db.prepare('UPDATE memories SET last_accessed = ?, reinforcement_count = reinforcement_count + 1 WHERE id = ?');
+const searchUserMemoriesByTopicStmt = db.prepare(
+  `SELECT m.id, m.content, m.category, m.timestamp FROM memories m
+   INNER JOIN memory_fts f ON f.rowid = m.id
+   WHERE m.user_id = ? AND m.forgotten = 0 AND memory_fts MATCH ?
+   ORDER BY f.rank LIMIT 20`
+);
+
+function getUserMemoriesActive(userId) {
+  return getUserMemoriesStmt.all(userId);
+}
+
+function softDeleteMemory(memoryId) {
+  softDeleteMemoryStmt.run(memoryId);
+  try { deleteFtsRowStmt.run(memoryId); } catch (_) {}
+}
+
+function touchMemory(memoryId) {
+  touchMemoryStmt.run(Date.now(), memoryId);
+}
+
+function searchUserMemoriesByTopic(userId, topic) {
+  try {
+    const sanitized = topic.replace(/['"*(){}[\]:^~!@#$%&\\]/g, ' ').trim();
+    if (!sanitized) return [];
+    const terms = sanitized.split(/\s+/).filter(Boolean).map(t => `"${t}"`).join(' ');
+    return searchUserMemoriesByTopicStmt.all(userId, terms);
+  } catch (err) {
+    logger.error('DB', 'searchUserMemoriesByTopic error:', err.message);
+    return [];
+  }
+}
+
 function getDb() { return db; }
 function close() { try { db.close(); } catch (_) {} }
 
@@ -451,7 +496,7 @@ module.exports = {
   close,
   logMessage, getRecentMessages,
   saveSummary, getLatestSummary,
-  insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories, searchFts, getMemoriesByUser, markMemoryConsolidated, countUserUnconsolidatedMemories,
+  insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories, searchFts, getMemoriesByUser, markMemoryConsolidated, countUserUnconsolidatedMemories, getUserMemoriesActive, softDeleteMemory, touchMemory, searchUserMemoriesByTopic,
   upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics,
   getState, setState,
   logToolUsage, getToolStats,

@@ -69,6 +69,17 @@ async function registerCommands() {
     const exportCmd = new SlashCommandBuilder()
       .setName('export')
       .setDescription('Export the current conversation as a markdown file');
+    const rememberCmd = new SlashCommandBuilder()
+      .setName('remember')
+      .setDescription('Tell me something to remember about you')
+      .addStringOption(opt => opt.setName('fact').setDescription('What should I remember?').setRequired(true));
+    const forgetCmd = new SlashCommandBuilder()
+      .setName('forget')
+      .setDescription('Forget memories about a topic')
+      .addStringOption(opt => opt.setName('topic').setDescription('What should I forget?').setRequired(true));
+    const memoriesCmd = new SlashCommandBuilder()
+      .setName('memories')
+      .setDescription('See what I remember about you');
     const statsCmd = new SlashCommandBuilder()
       .setName('stats')
       .setDescription('View bot statistics (admin only)');
@@ -84,7 +95,7 @@ async function registerCommands() {
       .addBooleanOption(opt => opt.setName('images').setDescription('Enable/disable image generation in responses'));
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON(), helpCmd.toJSON(), exportCmd.toJSON(), statsCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON(), helpCmd.toJSON(), exportCmd.toJSON(), statsCmd.toJSON(), rememberCmd.toJSON(), forgetCmd.toJSON(), memoriesCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {

@@ -9,6 +9,7 @@ const { generateImage, thinkWithModel } = require('../openai-client');
 const { clearChannelContext, getContext } = require('../context');
 const { getUserSettings, saveUserSettings, getDb, getFeedbackStats, getMessageCount } = require('../db');
 const { friendlyError } = require('../utils/errors');
+const { handleRemember, handleForget, handleMemories } = require('../commands/memory-commands');
 const config = require('../config');
 const logger = require('../logger');
 
@@ -79,7 +80,7 @@ async function handleInteraction(interaction) {
         { name: '🧮 Math', value: 'Complex calculations, conversions, you name it', inline: true },
         { name: '📖 Define', value: 'Word definitions and explanations', inline: true },
         { name: '📄 Summarize', value: 'Give me a URL, I\'ll summarize it', inline: true },
-        { name: '🧠 Memory', value: 'I remember our conversations and learn your preferences', inline: false },
+        { name: '🧠 Memory', value: 'I remember our conversations and learn your preferences\n`/remember` — Tell me something to remember\n`/forget` — Forget memories about a topic\n`/memories` — See what I know about you', inline: false },
         { name: '⚙️ Commands', value: '`/chat` — Start a thread\n`/imagine` — Generate an image\n`/tools` — See all tools\n`/settings` — Your preferences\n`/reset` — Clear conversation\n`/export` — Export conversation\n`/stats` — Bot stats (admin)\n`/help` — This message', inline: false }
       )
       .setFooter({ text: 'Tip: I work best in threads — use /chat to start one!' });
@@ -210,6 +211,10 @@ async function handleInteraction(interaction) {
       return interaction.reply({ content: friendlyError(err), ephemeral: true });
     }
   }
+
+  if (interaction.commandName === 'remember') return handleRemember(interaction);
+  if (interaction.commandName === 'forget') return handleForget(interaction);
+  if (interaction.commandName === 'memories') return handleMemories(interaction);
 
   if (interaction.commandName === 'chat') {
     try {
