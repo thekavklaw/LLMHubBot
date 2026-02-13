@@ -107,4 +107,21 @@ async function generateImage(prompt, size = '1024x1024') {
   throw new Error('No image data returned');
 }
 
-module.exports = { generateResponse, generateImage };
+/**
+ * Call a model with JSON mode for structured output (used by thinking layer).
+ * @param {Array} messages - OpenAI message array
+ * @param {string} model - Model to use
+ * @returns {string} raw response text
+ */
+async function thinkWithModel(messages, model = 'gpt-4.1-mini') {
+  const completion = await openai.chat.completions.create({
+    model,
+    messages,
+    temperature: 0.2,
+    max_tokens: 300,
+    response_format: { type: 'json_object' },
+  });
+  return completion.choices[0]?.message?.content || '';
+}
+
+module.exports = { generateResponse, generateImage, thinkWithModel };

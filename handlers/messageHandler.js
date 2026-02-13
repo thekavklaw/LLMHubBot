@@ -1,13 +1,15 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('../soul');
-const { generateResponse } = require('../openai-client');
+const { generateResponse, generateImage } = require('../openai-client');
 const { addMessage, getContext, getRecentContextMessages, withChannelLock } = require('../context');
 const { logMessage, getState, setState } = require('../db');
 const { shouldRespond } = require('../relevance');
-const { storeMemory, extractFacts } = require('../memory');
-const { trackUser, updateProfilesFromFacts } = require('../users');
+const { think } = require('../thinking');
+const { storeMemory, extractFacts, searchMemory } = require('../memory');
+const { trackUser, updateProfilesFromFacts, getProfile } = require('../users');
 const { checkMessage, checkOutput } = require('../moderator');
 const { checkRateLimit } = require('../ratelimiter');
+const { searchWeb } = require('../tools/webSearch');
 const config = require('../config');
 const logger = require('../logger');
 const TaskQueue = require('../queue');
@@ -17,6 +19,9 @@ const apiQueue = new TaskQueue(config.maxConcurrentApi);
 const channelMsgCounts = new Map();
 let globalMsgCount = parseInt(getState('global_msg_count') || '0', 10);
 const userNameToId = new Map();
+
+// Image rate limiting per user
+const imageRateLimits = new Map(); // userId -> [{timestamp}]
 
 // Health stats
 let messageCount = 0;
@@ -63,6 +68,25 @@ function errorEmbed(description) {
     .setTimestamp();
 }
 
+/**
+ * Check if user can generate an image (rate limit).
+ */
+function canGenerateImage(userId) {
+  if (!config.enableImageGeneration) return false;
+  const now = Date.now();
+  const hourAgo = now - 3600000;
+  let timestamps = imageRateLimits.get(userId) || [];
+  timestamps = timestamps.filter(t => t > hourAgo);
+  imageRateLimits.set(userId, timestamps);
+  return timestamps.length < config.maxImagesPerUserPerHour;
+}
+
+function recordImageGeneration(userId) {
+  const timestamps = imageRateLimits.get(userId) || [];
+  timestamps.push(Date.now());
+  imageRateLimits.set(userId, timestamps);
+}
+
 async function runFactExtraction(channelId) {
   try {
     const recentMsgs = getRecentContextMessages(channelId);
@@ -95,6 +119,15 @@ async function handleMessage(message) {
     trackUser(userId, userName, displayName);
     userNameToId.set(userName, userId);
 
+    // Extract image attachments for vision
+    const IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+    const imageUrls = [...message.attachments.values()]
+      .filter(a => {
+        const ext = (a.name || '').split('.').pop()?.toLowerCase();
+        return IMAGE_TYPES.includes(ext) || (a.contentType && a.contentType.startsWith('image/'));
+      })
+      .map(a => a.url);
+
     // Build content: string or array (for vision)
     let userContent;
     if (imageUrls.length > 0) {
@@ -109,15 +142,6 @@ async function handleMessage(message) {
 
     addMessage(channelId, 'user', userContent, userName);
     logMessage(channelId, userId, userName, 'user', message.content);
-
-    // Extract image attachments for vision
-    const IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
-    const imageUrls = [...message.attachments.values()]
-      .filter(a => {
-        const ext = (a.name || '').split('.').pop()?.toLowerCase();
-        return IMAGE_TYPES.includes(ext) || (a.contentType && a.contentType.startsWith('image/'));
-      })
-      .map(a => a.url);
 
     if (message.content.trim().length < 1 && imageUrls.length === 0) return;
 
@@ -152,51 +176,52 @@ async function handleMessage(message) {
       reflectAndUpdate().catch(err => logger.error('BackgroundReflection', 'Error:', err));
     }
 
-    if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
-      try {
-        const recentMessages = getRecentContextMessages(channelId);
-        const decision = await shouldRespond(message, recentMessages, message.client.user.id);
-        logger.debug('Relevance', `${userName}: "${message.content.slice(0, 60)}" → respond=${decision.respond} (${decision.confidence}) — ${decision.reason}`);
-        if (!decision.respond) return;
-      } catch (err) {
-        logger.error('Relevance', 'Error:', err);
+    // ── Thinking Layer or Relevance Fallback ──
+    let decision;
+    const recentMessages = getRecentContextMessages(channelId);
+
+    if (config.enableThinking) {
+      // Get user profile and memories for thinking context
+      let userProfile = null;
+      try { userProfile = getProfile(userId); } catch (_) {}
+
+      let relevantMemories = [];
+      try { relevantMemories = await searchMemory(message.content, 3, 0.6); } catch (_) {}
+
+      decision = await think(recentMessages, userProfile, relevantMemories, inThread, message.client.user.id);
+
+      if (decision.action === 'ignore') {
+        logger.debug('Thinking', `Ignoring message from ${userName}: ${decision.reasoning}`);
+        return;
       }
+    } else {
+      // Fallback to old relevance check
+      if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
+        try {
+          const relevanceDecision = await shouldRespond(message, recentMessages, message.client.user.id);
+          logger.debug('Relevance', `${userName}: "${message.content.slice(0, 60)}" → respond=${relevanceDecision.respond} (${relevanceDecision.confidence}) — ${relevanceDecision.reason}`);
+          if (!relevanceDecision.respond) return;
+        } catch (err) {
+          logger.error('Relevance', 'Error:', err);
+        }
+      }
+      decision = { action: 'respond', tone: 'helpful', confidence: 0.5, image_prompt: null, search_query: null };
     }
 
-    // Queue the API call with timeout
+    // ── Route by Decision ──
     const soulConfig = getSoulConfig();
 
-    const response = await apiQueue.enqueue(async () => {
-      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...getContext(channelId),
-      ];
-
-      try { await message.channel.sendTyping(); } catch (_) {}
-
-      // Timeout wrapper
-      return Promise.race([
-        generateResponse(messages, soulConfig),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)
-        ),
-      ]);
-    });
-
-    const outMod = await checkOutput(response, channelId);
-    if (!outMod.safe) {
-      logger.warn('Moderator', 'Blocked outgoing response');
-      await message.channel.send({ embeds: [errorEmbed("I generated a response but it was flagged by moderation. Let me try a different approach.")] }).catch(() => {});
-      return;
+    if (decision.action === 'search_and_respond') {
+      await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig);
+    } else if (decision.action === 'generate_image') {
+      await handleGenerateImage(message, channelId, userId, userName, decision);
+    } else if (decision.action === 'respond_with_image') {
+      await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig);
+    } else {
+      // Default: respond with text only
+      await handleTextResponse(message, channelId, userId, userName, soulConfig);
     }
 
-    addMessage(channelId, 'assistant', response);
-    logMessage(channelId, null, 'LLMHub', 'assistant', response);
-
-    for (const part of splitMessage(response)) {
-      await message.channel.send(part);
-    }
   } catch (err) {
     errorCount++;
     updateHealth();
@@ -212,6 +237,192 @@ async function handleMessage(message) {
       } catch (_) {}
     }
   }
+}
+
+/**
+ * Standard text-only response.
+ */
+async function handleTextResponse(message, channelId, userId, userName, soulConfig) {
+  const response = await apiQueue.enqueue(async () => {
+    const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...getContext(channelId),
+    ];
+    try { await message.channel.sendTyping(); } catch (_) {}
+    return Promise.race([
+      generateResponse(messages, soulConfig),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+    ]);
+  });
+
+  const outMod = await checkOutput(response, channelId);
+  if (!outMod.safe) {
+    logger.warn('Moderator', 'Blocked outgoing response');
+    await message.channel.send({ embeds: [errorEmbed("I generated a response but it was flagged by moderation.")] }).catch(() => {});
+    return;
+  }
+
+  addMessage(channelId, 'assistant', response);
+  logMessage(channelId, null, 'LLMHub', 'assistant', response);
+
+  for (const part of splitMessage(response)) {
+    await message.channel.send(part);
+  }
+}
+
+/**
+ * Search the web, then respond with search results as context.
+ */
+async function handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig) {
+  try { await message.channel.sendTyping(); } catch (_) {}
+
+  let searchResults = '';
+  try {
+    const results = await searchWeb(decision.search_query);
+    searchResults = results.map(r => `**${r.title}**\n${r.url}\n${r.snippet}`).join('\n\n');
+    logger.info('Thinking', `Web search: "${decision.search_query}" → ${results.length} results`);
+  } catch (err) {
+    logger.error('Thinking', 'Web search failed:', err.message);
+  }
+
+  const response = await apiQueue.enqueue(async () => {
+    const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+    const contextMessages = [
+      { role: 'system', content: systemPrompt },
+      ...getContext(channelId),
+    ];
+    if (searchResults) {
+      contextMessages.push({
+        role: 'system',
+        content: `Web search results for "${decision.search_query}":\n\n${searchResults}\n\nUse these results to inform your response. Cite sources when relevant.`,
+      });
+    }
+    return Promise.race([
+      generateResponse(contextMessages, { ...soulConfig, tools: false }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+    ]);
+  });
+
+  const outMod = await checkOutput(response, channelId);
+  if (!outMod.safe) {
+    await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
+    return;
+  }
+
+  addMessage(channelId, 'assistant', response);
+  logMessage(channelId, null, 'LLMHub', 'assistant', response);
+
+  for (const part of splitMessage(response)) {
+    await message.channel.send(part);
+  }
+}
+
+/**
+ * Generate an image only (no text response).
+ */
+async function handleGenerateImage(message, channelId, userId, userName, decision) {
+  if (!canGenerateImage(userId)) {
+    await message.channel.send({ embeds: [errorEmbed("You've hit the image generation limit. Try again later.")] }).catch(() => {});
+    return;
+  }
+
+  try { await message.channel.sendTyping(); } catch (_) {}
+
+  try {
+    const imageBuffer = await generateImage(decision.image_prompt);
+    recordImageGeneration(userId);
+
+    const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.png' });
+    await message.channel.send({ files: [attachment] });
+
+    addMessage(channelId, 'assistant', `[Generated image: ${decision.image_prompt}]`);
+    logMessage(channelId, null, 'LLMHub', 'assistant', `[Image: ${decision.image_prompt}]`);
+
+    // Store memory about image preference
+    storeMemory(`User ${userName} requested a visual/image about: ${decision.image_prompt}`, {
+      userId, userName, channelId, category: 'preference',
+    }).catch(() => {});
+
+  } catch (err) {
+    logger.error('ImageGen', 'Error:', err.message);
+    await message.channel.send({ embeds: [errorEmbed("Failed to generate the image. Try again.")] }).catch(() => {});
+  }
+}
+
+/**
+ * Generate both a text response and an image.
+ */
+async function handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig) {
+  if (!canGenerateImage(userId)) {
+    // Fall back to text-only
+    await handleTextResponse(message, channelId, userId, userName, soulConfig);
+    return;
+  }
+
+  try { await message.channel.sendTyping(); } catch (_) {}
+
+  // Run text and image generation in parallel
+  const [response, imageResult] = await Promise.allSettled([
+    apiQueue.enqueue(async () => {
+      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...getContext(channelId),
+      ];
+      return Promise.race([
+        generateResponse(messages, soulConfig),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+      ]);
+    }),
+    generateImage(decision.image_prompt),
+  ]);
+
+  // Send text response
+  let textSent = false;
+  if (response.status === 'fulfilled' && response.value) {
+    const outMod = await checkOutput(response.value, channelId);
+    if (outMod.safe) {
+      addMessage(channelId, 'assistant', response.value);
+      logMessage(channelId, null, 'LLMHub', 'assistant', response.value);
+
+      // If we also have an image, attach it to the last text chunk
+      if (imageResult.status === 'fulfilled') {
+        const parts = splitMessage(response.value);
+        // Send all but last
+        for (let i = 0; i < parts.length - 1; i++) {
+          await message.channel.send(parts[i]);
+        }
+        // Send last part with image
+        recordImageGeneration(userId);
+        const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
+        await message.channel.send({ content: parts[parts.length - 1], files: [attachment] });
+        textSent = true;
+      } else {
+        for (const part of splitMessage(response.value)) {
+          await message.channel.send(part);
+        }
+        textSent = true;
+      }
+    }
+  }
+
+  // If text failed but image succeeded, send image alone
+  if (!textSent && imageResult.status === 'fulfilled') {
+    recordImageGeneration(userId);
+    const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
+    await message.channel.send({ files: [attachment] });
+  }
+
+  // If both failed
+  if (response.status === 'rejected' && imageResult.status === 'rejected') {
+    throw response.reason || new Error('Both text and image generation failed');
+  }
+
+  // Store memory about image preference
+  storeMemory(`User ${userName} appreciated a visual response about: ${decision.image_prompt}`, {
+    userId, userName, channelId, category: 'preference',
+  }).catch(() => {});
 }
 
 module.exports = { handleMessage, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };

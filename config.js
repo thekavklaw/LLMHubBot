@@ -55,6 +55,15 @@ const config = {
   logMaxSizeBytes: 5 * 1024 * 1024,
   logMaxFiles: 3,
 
+  // Thinking layer
+  enableThinking: process.env.ENABLE_THINKING !== 'false',
+  thinkingModel: process.env.THINKING_MODEL || 'gpt-4.1-mini',
+
+  // Image generation
+  enableImageGeneration: process.env.ENABLE_IMAGE_GENERATION !== 'false',
+  imageModel: process.env.IMAGE_MODEL || 'gpt-image-1',
+  maxImagesPerUserPerHour: parseInt(process.env.MAX_IMAGES_PER_USER_PER_HOUR || '10', 10),
+
   // Feature flags
   features: {
     memory: true,
