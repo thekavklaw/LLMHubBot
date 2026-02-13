@@ -2,7 +2,7 @@ const config = require('./config');
 const logger = require('./logger');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getState, setState } = require('./db');
-const { handleMessage, setAgentLoop, setOrchestrator } = require('./handlers/messageHandler');
+const { handleMessage, setAgentLoop, setOrchestrator, modelQueue, debouncer } = require('./handlers/messageHandler');
 const { handleInteraction } = require('./handlers/interactionHandler');
 const ToolRegistry = require('./tools/registry');
 const AgentLoop = require('./agent-loop');
@@ -101,12 +101,26 @@ if (config.enableAgentLoop) {
       agentLoop,
       config,
     });
+    orchestrator.setModelQueue(modelQueue);
     setOrchestrator(orchestrator);
     logger.info('Bot', `5-layer thinking system enabled with ${registry.listTools().length} tools`);
   } else {
     logger.info('Bot', `Agent loop enabled with ${registry.listTools().length} tools`);
   }
 }
+
+// ── Health endpoint ──
+const { startHealthServer } = require('./health');
+const { getStats } = require('./handlers/messageHandler');
+startHealthServer(3870, () => {
+  const stats = getStats();
+  return {
+    queues: stats.queueStats,
+    messagesProcessed: stats.messageCount,
+    errors: stats.errorCount,
+    debouncer: debouncer.getStats(),
+  };
+});
 
 // ── Register handlers ──
 client.on('messageCreate', handleMessage);

@@ -17,9 +17,23 @@ const { checkRateLimit } = require('../ratelimiter');
 const { searchWeb } = require('../tools/webSearch');
 const config = require('../config');
 const logger = require('../logger');
-const TaskQueue = require('../queue');
+const { ModelQueue } = require('../utils/model-queue');
+const MessageDebouncer = require('../utils/debouncer');
 
-const apiQueue = new TaskQueue(config.maxConcurrentApi);
+// ── Per-model queue system ──
+const modelQueue = new ModelQueue({
+  mainConcurrency: config.maxConcurrentApi || 8,
+  miniConcurrency: 15,
+  imageConcurrency: 3,
+  modConcurrency: 20,
+  mainMaxDepth: 50,
+  miniMaxDepth: 100,
+  imageMaxDepth: 10,
+  modMaxDepth: 100,
+});
+
+// ── Message debouncer (3s window) ──
+const debouncer = new MessageDebouncer(3000);
 
 const channelMsgCounts = new Map();
 let globalMsgCount = parseInt(getState('global_msg_count') || '0', 10);
@@ -44,7 +58,6 @@ function updateHealth() {
 function isGptChannel(channel) {
   if (channel.id === config.gptChannelId) return true;
   if (channel.isThread() && channel.parentId === config.gptChannelId) return true;
-  // Allow threads whose parent is in the allowed channels list
   const allowedChannels = config.allowedChannelIds;
   if (allowedChannels.length > 0) {
     if (allowedChannels.includes(channel.id)) return true;
@@ -56,7 +69,6 @@ function isGptChannel(channel) {
 function isGptThread(channel) {
   if (!channel.isThread()) return false;
   if (channel.parentId === config.gptChannelId) return true;
-  // Threads in any allowed channel count as GPT threads
   const allowedChannels = config.allowedChannelIds;
   if (allowedChannels.length > 0 && allowedChannels.includes(channel.parentId)) return true;
   return false;
@@ -82,6 +94,32 @@ function errorEmbed(description) {
     .setColor(0xED4245)
     .setDescription(`❌ ${description}`)
     .setTimestamp();
+}
+
+/**
+ * Determine message priority for queue ordering.
+ * 3 = bot mentioned, 2 = reply to bot, 1 = thread, 0 = ambient
+ */
+function getMessagePriority(message, botId) {
+  if (message.mentions?.has(botId)) return 3;
+  if (message.reference?.messageId) {
+    // Check if replying to bot's message
+    const referenced = message.channel.messages?.cache?.get(message.reference.messageId);
+    if (referenced?.author?.id === botId) return 2;
+  }
+  if (message.channel.isThread()) return 1;
+  return 0;
+}
+
+/**
+ * Start persistent typing indicator. Returns stop function.
+ */
+function startTyping(channel) {
+  channel.sendTyping().catch(() => {});
+  const interval = setInterval(() => {
+    channel.sendTyping().catch(() => {});
+  }, 9000);
+  return () => clearInterval(interval);
 }
 
 /**
@@ -121,41 +159,18 @@ async function runFactExtraction(channelId) {
   }
 }
 
-async function handleMessage(message) {
+/**
+ * Core message processing (called after debounce).
+ */
+async function processMessage(message, content) {
   try {
-    if (message.author.bot) return;
-
-    // Block DMs
-    if (!message.guild) {
-      logger.info('Guard', 'Blocked DM from ' + message.author.tag);
-      return;
-    }
-
-    // Block other guilds
-    if (config.allowedGuildId && message.guild.id !== config.allowedGuildId) {
-      logger.info('Guard', 'Blocked message from unauthorized guild: ' + message.guild.id);
-      return;
-    }
-
-    // Channel whitelist (allow threads whose parent is whitelisted)
-    const allowedChannels = config.allowedChannelIds;
-    if (allowedChannels.length > 0) {
-      const channelId = message.channel.id;
-      const parentId = message.channel.parentId;
-      if (!allowedChannels.includes(channelId) && !allowedChannels.includes(parentId)) {
-        return;
-      }
-    }
-
-    if (!isGptChannel(message.channel)) return;
-
-    logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);
-
     const channelId = message.channel.id;
     const userId = message.author.id;
     const userName = message.author.username;
     const displayName = message.member?.displayName || userName;
     const inThread = isGptThread(message.channel);
+    const botId = message.client.user.id;
+    const priority = getMessagePriority(message, botId);
 
     trackUser(userId, userName, displayName);
     userNameToId.set(userName, userId);
@@ -173,18 +188,17 @@ async function handleMessage(message) {
     let userContent;
     if (imageUrls.length > 0) {
       userContent = [];
-      if (message.content.trim()) userContent.push({ type: 'text', text: message.content });
+      if (content.trim()) userContent.push({ type: 'text', text: content });
       for (const url of imageUrls) {
         userContent.push({ type: 'image_url', image_url: { url } });
       }
     } else {
-      userContent = message.content;
+      userContent = content;
     }
 
-    if (message.content.trim().length < 1 && imageUrls.length === 0) return;
+    if (content.trim().length < 1 && imageUrls.length === 0) return;
 
     const rateResult = checkRateLimit(userId, channelId, inThread, message.member);
-    logger.debug('MessageHandler', `Rate limit check for ${userName}: allowed=${rateResult.allowed}`);
     if (!rateResult.allowed) {
       logger.warn('MessageHandler', `Rate limited ${userName} (retry in ${rateResult.retryAfter}s)`);
       try {
@@ -197,17 +211,16 @@ async function handleMessage(message) {
       return;
     }
 
-    // Moderation check BEFORE adding to context — only checks the new message
+    // Moderation check BEFORE adding to context
     const modResult = await checkMessage(message, imageUrls);
-    logger.debug('MessageHandler', `Moderation result for ${userName}: safe=${modResult.safe}`);
     if (!modResult.safe) {
       logger.warn('MessageHandler', `Message from ${userName} blocked by moderation`);
-      return; // Don't store flagged message in context or DB
+      return;
     }
 
     // Only add to context/DB AFTER moderation passes
     addMessage(channelId, 'user', userContent, userName, message.id);
-    logMessage(channelId, userId, userName, 'user', message.content);
+    logMessage(channelId, userId, userName, 'user', content);
 
     messageCount++;
     const chCount = (channelMsgCounts.get(channelId) || 0) + 1;
@@ -224,35 +237,51 @@ async function handleMessage(message) {
       reflectAndUpdate().catch(err => logger.error('BackgroundReflection', 'Error:', err));
     }
 
+    // ── Check if queue is full before enqueueing ──
+    if (modelQueue.isQueueFull(config.model)) {
+      logger.warn('MessageHandler', `Queue full, rejecting message from ${userName}`);
+      await message.channel.send("I'm a bit busy right now! Give me a moment and try again. 🕐").catch(() => {});
+      return;
+    }
+
+    // ── Backpressure signaling ──
+    const queueStats = modelQueue.getStats();
+    const mainQueue = queueStats.main;
+    const isQueued = mainQueue.active >= 8; // will be queued, not immediate
+    if (isQueued) {
+      try { await message.react('⏳'); } catch (_) {}
+    }
+
     // ── 5-Layer Thinking System or Legacy Fallback ──
     if (_orchestrator && config.thinkingLayersEnabled) {
-      // New 5-layer system handles everything
-      const mentionsBot = message.mentions?.has(message.client.user.id);
+      const mentionsBot = message.mentions?.has(botId);
       const repliesToBot = message.reference?.messageId &&
-        message.channel.messages?.cache?.get(message.reference.messageId)?.author?.id === message.client.user.id;
+        message.channel.messages?.cache?.get(message.reference.messageId)?.author?.id === botId;
 
-      try { await message.channel.sendTyping(); } catch (_) {}
-
-      const typingInterval = setInterval(() => {
-        message.channel.sendTyping().catch(() => {});
-      }, 8000);
+      const stopTyping = startTyping(message.channel);
 
       try {
-        const orchestratorResult = await apiQueue.enqueue(() =>
+        const orchestratorResult = await modelQueue.enqueue(config.model, () =>
           _orchestrator.process(message, {
             userId,
             userName,
             displayName,
             channelId,
-            botId: message.client.user.id,
+            botId,
             inThread,
             mentionsBot,
             repliesToBot,
             gptChannelId: config.gptChannelId,
-          })
+          }),
+          priority
         );
 
-        clearInterval(typingInterval);
+        stopTyping();
+
+        // Remove backpressure emoji
+        if (isQueued) {
+          try { await message.reactions.cache.get('⏳')?.users?.remove(botId); } catch (_) {}
+        }
 
         if (orchestratorResult.action === 'ignore') {
           logger.debug('Orchestrator', `Ignoring ${userName}: ${orchestratorResult.reason}`);
@@ -279,14 +308,13 @@ async function handleMessage(message) {
         addMessage(channelId, 'assistant', orchestratorResult.text || '[image]');
         logMessage(channelId, null, 'LLMHub', 'assistant', orchestratorResult.text || '[image]');
 
-        // Send Discord messages (multi-message with delays)
+        // Send Discord messages
         for (const msg of orchestratorResult.messages || []) {
           try {
             if (msg.delayMs && msg.delayMs > 0) {
               await message.channel.sendTyping().catch(() => {});
               await new Promise(r => setTimeout(r, msg.delayMs));
             }
-            // Build send payload (strip delayMs)
             const payload = {};
             if (msg.content) payload.content = msg.content;
             if (msg.files && msg.files.length > 0) payload.files = msg.files;
@@ -296,13 +324,15 @@ async function handleMessage(message) {
             }
           } catch (sendErr) {
             logger.error('MessageHandler', `Failed to send message part: ${sendErr.message}`);
-            // Continue sending remaining messages
           }
         }
         const responsePreview = (orchestratorResult.text || '[image]').slice(0, 80);
         logger.info('MessageHandler', `Response sent to ${channelId}: "${responsePreview}" (${(orchestratorResult.text || '').length} chars)`);
       } catch (err) {
-        clearInterval(typingInterval);
+        stopTyping();
+        if (isQueued) {
+          try { await message.reactions.cache.get('⏳')?.users?.remove(botId); } catch (_) {}
+        }
         throw err;
       }
     } else {
@@ -315,9 +345,9 @@ async function handleMessage(message) {
         try { userProfile = getProfile(userId); } catch (_) {}
 
         let relevantMemories = [];
-        try { relevantMemories = await searchMemory(message.content, 3, 0.6); } catch (_) {}
+        try { relevantMemories = await searchMemory(content, 3, 0.6); } catch (_) {}
 
-        decision = await think(recentMessages, userProfile, relevantMemories, inThread, message.client.user.id);
+        decision = await think(recentMessages, userProfile, relevantMemories, inThread, botId);
 
         if (decision.action === 'ignore') {
           logger.debug('Thinking', `Ignoring message from ${userName}: ${decision.reasoning}`);
@@ -326,8 +356,7 @@ async function handleMessage(message) {
       } else {
         if (!inThread && message.channel.id === config.gptChannelId && config.features.relevanceCheck) {
           try {
-            const relevanceDecision = await shouldRespond(message, recentMessages, message.client.user.id);
-            logger.debug('Relevance', `${userName}: "${message.content.slice(0, 60)}" → respond=${relevanceDecision.respond} (${relevanceDecision.confidence}) — ${relevanceDecision.reason}`);
+            const relevanceDecision = await shouldRespond(message, recentMessages, botId);
             if (!relevanceDecision.respond) return;
           } catch (err) {
             logger.error('Relevance', 'Error:', err);
@@ -339,22 +368,27 @@ async function handleMessage(message) {
       const soulConfig = getSoulConfig();
 
       if (_agentLoop && config.enableAgentLoop) {
-        await handleAgentResponse(message, channelId, userId, userName, soulConfig);
+        await handleAgentResponse(message, channelId, userId, userName, soulConfig, priority);
       } else if (decision.action === 'search_and_respond') {
-        await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig);
+        await handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig, priority);
       } else if (decision.action === 'generate_image') {
-        await handleGenerateImage(message, channelId, userId, userName, decision);
+        await handleGenerateImage(message, channelId, userId, userName, decision, priority);
       } else if (decision.action === 'respond_with_image') {
-        await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig);
+        await handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig, priority);
       } else {
-        await handleTextResponse(message, channelId, userId, userName, soulConfig);
+        await handleTextResponse(message, channelId, userId, userName, soulConfig, priority);
       }
     }
 
   } catch (err) {
     errorCount++;
     updateHealth();
-    if (err.message === 'TIMEOUT') {
+    if (err.message === 'QUEUE_FULL') {
+      logger.warn('MessageHandler', 'Queue full');
+      try {
+        await message.channel.send("I'm a bit busy right now! Give me a moment and try again. 🕐");
+      } catch (_) {}
+    } else if (err.message === 'TIMEOUT') {
       logger.warn('MessageHandler', 'OpenAI timeout');
       try {
         await message.channel.send({ embeds: [errorEmbed("Sorry, I'm a bit busy right now. Try again in a moment.")] });
@@ -369,21 +403,56 @@ async function handleMessage(message) {
 }
 
 /**
+ * Entry point — applies debouncing before processing.
+ */
+async function handleMessage(message) {
+  try {
+    if (message.author.bot) return;
+    if (!message.guild) return;
+    if (config.allowedGuildId && message.guild.id !== config.allowedGuildId) return;
+
+    const allowedChannels = config.allowedChannelIds;
+    if (allowedChannels.length > 0) {
+      const channelId = message.channel.id;
+      const parentId = message.channel.parentId;
+      if (!allowedChannels.includes(channelId) && !allowedChannels.includes(parentId)) return;
+    }
+
+    if (!isGptChannel(message.channel)) return;
+
+    logger.info('MessageHandler', `Message received: ${message.author.username} in ${message.channel.id} (${message.channel.isThread() ? 'thread' : 'channel'})`);
+
+    // Debounce: coalesce rapid messages from same user+channel
+    debouncer.add(message, (lastMessage, combinedContent) => {
+      processMessage(lastMessage, combinedContent).catch(err => {
+        logger.error('MessageHandler', 'Debounced processing error:', err);
+      });
+    });
+  } catch (err) {
+    logger.error('MessageHandler', 'Pre-processing error:', err);
+  }
+}
+
+/**
  * Standard text-only response.
  */
-async function handleTextResponse(message, channelId, userId, userName, soulConfig) {
-  const response = await apiQueue.enqueue(async () => {
+async function handleTextResponse(message, channelId, userId, userName, soulConfig, priority = 0) {
+  const response = await modelQueue.enqueue(config.model, async () => {
     const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
     const messages = [
       { role: 'system', content: systemPrompt },
       ...getContext(channelId),
     ];
-    try { await message.channel.sendTyping(); } catch (_) {}
-    return Promise.race([
-      generateResponse(messages, soulConfig),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
-    ]);
-  });
+    const stopTyping = startTyping(message.channel);
+    try {
+      return await Promise.race([
+        generateResponse(messages, soulConfig),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+      ]);
+    } finally {
+      stopTyping();
+    }
+  }, priority);
 
   const outMod = await checkOutput(response, channelId);
   if (!outMod.safe) {
@@ -403,8 +472,8 @@ async function handleTextResponse(message, channelId, userId, userName, soulConf
 /**
  * Search the web, then respond with search results as context.
  */
-async function handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig) {
-  try { await message.channel.sendTyping(); } catch (_) {}
+async function handleSearchAndRespond(message, channelId, userId, userName, decision, soulConfig, priority = 0) {
+  const stopTyping = startTyping(message.channel);
 
   let searchResults = '';
   try {
@@ -415,51 +484,59 @@ async function handleSearchAndRespond(message, channelId, userId, userName, deci
     logger.error('Thinking', 'Web search failed:', err.message);
   }
 
-  const response = await apiQueue.enqueue(async () => {
-    const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-    const contextMessages = [
-      { role: 'system', content: systemPrompt },
-      ...getContext(channelId),
-    ];
-    if (searchResults) {
-      contextMessages.push({
-        role: 'system',
-        content: `Web search results for "${decision.search_query}":\n\n${searchResults}\n\nUse these results to inform your response. Cite sources when relevant.`,
-      });
+  try {
+    const response = await modelQueue.enqueue(config.model, async () => {
+      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+      const contextMessages = [
+        { role: 'system', content: systemPrompt },
+        ...getContext(channelId),
+      ];
+      if (searchResults) {
+        contextMessages.push({
+          role: 'system',
+          content: `Web search results for "${decision.search_query}":\n\n${searchResults}\n\nUse these results to inform your response. Cite sources when relevant.`,
+        });
+      }
+      return Promise.race([
+        generateResponse(contextMessages, { ...soulConfig, tools: false }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+      ]);
+    }, priority);
+
+    stopTyping();
+
+    const outMod = await checkOutput(response, channelId);
+    if (!outMod.safe) {
+      await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
+      return;
     }
-    return Promise.race([
-      generateResponse(contextMessages, { ...soulConfig, tools: false }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
-    ]);
-  });
 
-  const outMod = await checkOutput(response, channelId);
-  if (!outMod.safe) {
-    await message.channel.send({ embeds: [errorEmbed("Response flagged by moderation.")] }).catch(() => {});
-    return;
-  }
+    addMessage(channelId, 'assistant', response);
+    logMessage(channelId, null, 'LLMHub', 'assistant', response);
 
-  addMessage(channelId, 'assistant', response);
-  logMessage(channelId, null, 'LLMHub', 'assistant', response);
-
-  for (const part of splitMessage(response)) {
-    await message.channel.send(part);
+    for (const part of splitMessage(response)) {
+      await message.channel.send(part);
+    }
+  } catch (err) {
+    stopTyping();
+    throw err;
   }
 }
 
 /**
  * Generate an image only (no text response).
  */
-async function handleGenerateImage(message, channelId, userId, userName, decision) {
+async function handleGenerateImage(message, channelId, userId, userName, decision, priority = 0) {
   if (!canGenerateImage(userId)) {
     await message.channel.send({ embeds: [errorEmbed("You've hit the image generation limit. Try again later.")] }).catch(() => {});
     return;
   }
 
-  try { await message.channel.sendTyping(); } catch (_) {}
+  const stopTyping = startTyping(message.channel);
 
   try {
-    const imageBuffer = await generateImage(decision.image_prompt);
+    const imageBuffer = await modelQueue.enqueue('gpt-image-1', () => generateImage(decision.image_prompt), priority);
+    stopTyping();
     recordImageGeneration(userId);
 
     const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.png' });
@@ -468,12 +545,11 @@ async function handleGenerateImage(message, channelId, userId, userName, decisio
     addMessage(channelId, 'assistant', `[Generated image: ${decision.image_prompt}]`);
     logMessage(channelId, null, 'LLMHub', 'assistant', `[Image: ${decision.image_prompt}]`);
 
-    // Store memory about image preference
     storeMemory(`User ${userName} requested a visual/image about: ${decision.image_prompt}`, {
       userId, userName, channelId, category: 'preference',
     }).catch(() => {});
-
   } catch (err) {
+    stopTyping();
     logger.error('ImageGen', 'Error:', err.message);
     await message.channel.send({ embeds: [errorEmbed("Failed to generate the image. Try again.")] }).catch(() => {});
   }
@@ -482,91 +558,84 @@ async function handleGenerateImage(message, channelId, userId, userName, decisio
 /**
  * Generate both a text response and an image.
  */
-async function handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig) {
+async function handleRespondWithImage(message, channelId, userId, userName, decision, soulConfig, priority = 0) {
   if (!canGenerateImage(userId)) {
-    // Fall back to text-only
-    await handleTextResponse(message, channelId, userId, userName, soulConfig);
+    await handleTextResponse(message, channelId, userId, userName, soulConfig, priority);
     return;
   }
 
-  try { await message.channel.sendTyping(); } catch (_) {}
+  const stopTyping = startTyping(message.channel);
 
-  // Run text and image generation in parallel
-  const [response, imageResult] = await Promise.allSettled([
-    apiQueue.enqueue(async () => {
-      const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...getContext(channelId),
-      ];
-      return Promise.race([
-        generateResponse(messages, soulConfig),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
-      ]);
-    }),
-    generateImage(decision.image_prompt),
-  ]);
+  try {
+    const [response, imageResult] = await Promise.allSettled([
+      modelQueue.enqueue(config.model, async () => {
+        const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...getContext(channelId),
+        ];
+        return Promise.race([
+          generateResponse(messages, soulConfig),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.apiTimeoutMs)),
+        ]);
+      }, priority),
+      modelQueue.enqueue('gpt-image-1', () => generateImage(decision.image_prompt), priority),
+    ]);
 
-  // Send text response
-  let textSent = false;
-  if (response.status === 'fulfilled' && response.value) {
-    const outMod = await checkOutput(response.value, channelId);
-    if (outMod.safe) {
-      addMessage(channelId, 'assistant', response.value);
-      logMessage(channelId, null, 'LLMHub', 'assistant', response.value);
+    stopTyping();
 
-      // If we also have an image, attach it to the last text chunk
-      if (imageResult.status === 'fulfilled') {
-        const parts = splitMessage(response.value);
-        // Send all but last
-        for (let i = 0; i < parts.length - 1; i++) {
-          await message.channel.send(parts[i]);
+    let textSent = false;
+    if (response.status === 'fulfilled' && response.value) {
+      const outMod = await checkOutput(response.value, channelId);
+      if (outMod.safe) {
+        addMessage(channelId, 'assistant', response.value);
+        logMessage(channelId, null, 'LLMHub', 'assistant', response.value);
+
+        if (imageResult.status === 'fulfilled') {
+          const parts = splitMessage(response.value);
+          for (let i = 0; i < parts.length - 1; i++) {
+            await message.channel.send(parts[i]);
+          }
+          recordImageGeneration(userId);
+          const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
+          await message.channel.send({ content: parts[parts.length - 1], files: [attachment] });
+          textSent = true;
+        } else {
+          for (const part of splitMessage(response.value)) {
+            await message.channel.send(part);
+          }
+          textSent = true;
         }
-        // Send last part with image
-        recordImageGeneration(userId);
-        const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
-        await message.channel.send({ content: parts[parts.length - 1], files: [attachment] });
-        textSent = true;
-      } else {
-        for (const part of splitMessage(response.value)) {
-          await message.channel.send(part);
-        }
-        textSent = true;
       }
     }
-  }
 
-  // If text failed but image succeeded, send image alone
-  if (!textSent && imageResult.status === 'fulfilled') {
-    recordImageGeneration(userId);
-    const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
-    await message.channel.send({ files: [attachment] });
-  }
+    if (!textSent && imageResult.status === 'fulfilled') {
+      recordImageGeneration(userId);
+      const attachment = new AttachmentBuilder(imageResult.value, { name: 'generated.png' });
+      await message.channel.send({ files: [attachment] });
+    }
 
-  // If both failed
-  if (response.status === 'rejected' && imageResult.status === 'rejected') {
-    throw response.reason || new Error('Both text and image generation failed');
-  }
+    if (response.status === 'rejected' && imageResult.status === 'rejected') {
+      throw response.reason || new Error('Both text and image generation failed');
+    }
 
-  // Store memory about image preference
-  storeMemory(`User ${userName} appreciated a visual response about: ${decision.image_prompt}`, {
-    userId, userName, channelId, category: 'preference',
-  }).catch(() => {});
+    storeMemory(`User ${userName} appreciated a visual response about: ${decision.image_prompt}`, {
+      userId, userName, channelId, category: 'preference',
+    }).catch(() => {});
+  } catch (err) {
+    stopTyping();
+    throw err;
+  }
 }
 
 /**
- * Agent loop response — GPT decides when to use tools (search, image gen, etc.)
+ * Agent loop response — GPT decides when to use tools.
  */
-async function handleAgentResponse(message, channelId, userId, userName, soulConfig) {
-  try { await message.channel.sendTyping(); } catch (_) {}
-
-  // Keep typing indicator alive during agent loop
-  const typingInterval = setInterval(() => {
-    message.channel.sendTyping().catch(() => {});
-  }, 8000);
+async function handleAgentResponse(message, channelId, userId, userName, soulConfig, priority = 0) {
+  const stopTyping = startTyping(message.channel);
 
   try {
-    const result = await apiQueue.enqueue(async () => {
+    const result = await modelQueue.enqueue(config.model, async () => {
       const systemPrompt = await getSystemPrompt(channelId, userId, message.content);
       const contextMessages = getContext(channelId);
       const context = { userId, userName, channelId, generatedImages: [] };
@@ -575,9 +644,9 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
         _agentLoop.run(contextMessages, systemPrompt, context),
         new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), config.agentLoopTimeout || 60000)),
       ]);
-    });
+    }, priority);
 
-    clearInterval(typingInterval);
+    stopTyping();
 
     if (result.toolsUsed.length > 0) {
       logger.info('AgentLoop', `Used ${result.toolsUsed.length} tools in ${result.iterations} iterations`);
@@ -594,7 +663,6 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
     addMessage(channelId, 'assistant', result.text || '[image]');
     logMessage(channelId, null, 'LLMHub', 'assistant', result.text || '[image]');
 
-    // Build attachments from generated images
     const files = [];
     for (let i = 0; i < result.images.length; i++) {
       const img = result.images[i];
@@ -607,11 +675,9 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
 
     if (result.text) {
       const parts = splitMessage(result.text);
-      // Send all but last without files
       for (let i = 0; i < parts.length - 1; i++) {
         await message.channel.send(parts[i]);
       }
-      // Send last part with any image attachments
       await message.channel.send({
         content: parts[parts.length - 1],
         files: files.length > 0 ? files : undefined,
@@ -620,9 +686,23 @@ async function handleAgentResponse(message, channelId, userId, userName, soulCon
       await message.channel.send({ files });
     }
   } catch (err) {
-    clearInterval(typingInterval);
+    stopTyping();
     throw err;
   }
 }
 
-module.exports = { handleMessage, setAgentLoop, setOrchestrator, updateHealth, userNameToId, getStats: () => ({ messageCount, errorCount, globalMsgCount, queueStats: apiQueue.getStats() }) };
+module.exports = {
+  handleMessage,
+  setAgentLoop,
+  setOrchestrator,
+  updateHealth,
+  userNameToId,
+  modelQueue,
+  debouncer,
+  getStats: () => ({
+    messageCount,
+    errorCount,
+    globalMsgCount,
+    queueStats: modelQueue.getStats(),
+  }),
+};

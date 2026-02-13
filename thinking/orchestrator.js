@@ -14,13 +14,28 @@ const { reflect } = require('./layer5-reflect');
  * Layer 4: Response Synthesis — polish for Discord
  * Layer 5: Reflection — async learning (non-blocking)
  */
+/**
+ * Determine load level from queue stats for graceful degradation.
+ */
+function getLoadLevel(queueStats) {
+  if (!queueStats || !queueStats.main) return 1;
+  const mainDepth = queueStats.main.pending || 0;
+  if (mainDepth > 40) return 4; // critical
+  if (mainDepth > 25) return 3; // high
+  if (mainDepth > 10) return 2; // moderate
+  return 1; // normal
+}
+
 class ThinkingOrchestrator {
   constructor({ toolRegistry, agentLoop, config }) {
     this.toolRegistry = toolRegistry;
     this.agentLoop = agentLoop;
     this.config = config;
+    this._modelQueue = null; // set externally
     logger.info('Orchestrator', '5-layer thinking system initialized');
   }
+
+  setModelQueue(mq) { this._modelQueue = mq; }
 
   /**
    * Process a message through all 5 layers.
@@ -33,12 +48,20 @@ class ThinkingOrchestrator {
     const contentPreview = (typeof message.content === 'string' ? message.content : '[media]').slice(0, 80);
     logger.info('Orchestrator', `Processing message from ${context.userName} in ${context.channelId}: "${contentPreview}"`);
 
+    // Determine load level for graceful degradation
+    const queueStats = this._modelQueue ? this._modelQueue.getStats() : null;
+    const loadLevel = getLoadLevel(queueStats);
+    if (loadLevel >= 2) {
+      logger.info('Orchestrator', `Load level ${loadLevel} — degrading gracefully`);
+    }
+
     // Inject dependencies into context
     const fullContext = {
       ...context,
       toolRegistry: this.toolRegistry,
       agentLoop: this.agentLoop,
       agentLoopTimeout: this.config.agentLoopTimeout || 60000,
+      loadLevel,
     };
 
     // Layer 1: Relevance Gate
@@ -121,13 +144,17 @@ class ThinkingOrchestrator {
       }
     }
 
-    // Layer 5: Reflection (async, non-blocking)
-    setImmediate(() => {
-      const l5Start = Date.now();
-      reflect(message, response, fullContext)
-        .then(() => logger.debug('Orchestrator', `Layer 5 (Reflect): time=${Date.now() - l5Start}ms`))
-        .catch(err => logger.error('Orchestrator', 'Layer 5 (Reflect) failed:', { error: err.message, stack: err.stack }));
-    });
+    // Layer 5: Reflection (async, non-blocking) — skip under load
+    if (loadLevel <= 1) {
+      setImmediate(() => {
+        const l5Start = Date.now();
+        reflect(message, response, fullContext)
+          .then(() => logger.debug('Orchestrator', `Layer 5 (Reflect): time=${Date.now() - l5Start}ms`))
+          .catch(err => logger.error('Orchestrator', 'Layer 5 (Reflect) failed:', { error: err.message, stack: err.stack }));
+      });
+    } else {
+      logger.debug('Orchestrator', `Skipping reflection (load level ${loadLevel})`);
+    }
 
     logger.info('Orchestrator', `Total thinking pipeline: ${Date.now() - pipelineStart}ms`);
     return response;

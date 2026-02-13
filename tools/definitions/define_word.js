@@ -1,5 +1,8 @@
 const logger = require('../../logger');
 const { withRetry } = require('../../utils/retry');
+const LRUCache = require('../../utils/cache');
+
+const wordCache = new LRUCache(200, 3600000); // 1 hour TTL
 
 module.exports = {
   name: 'define_word',
@@ -12,7 +15,11 @@ module.exports = {
     required: ['word'],
   },
   async execute(args) {
-    const word = encodeURIComponent(args.word.trim().toLowerCase());
+    const wordKey = args.word.trim().toLowerCase();
+    const cached = wordCache.get(wordKey);
+    if (cached) return cached;
+
+    const word = encodeURIComponent(wordKey);
     const res = await withRetry(() => fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, {
       signal: AbortSignal.timeout(10000),
     }), { label: 'define-word' });
@@ -32,11 +39,14 @@ module.exports = {
       })),
     }));
 
-    return {
+    const result = {
       word: entry.word,
       found: true,
       phonetic: entry.phonetic || null,
       meanings,
     };
+    wordCache.set(wordKey, result);
+    return result;
   },
+  getCache() { return wordCache; },
 };

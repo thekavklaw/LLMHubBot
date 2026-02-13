@@ -1,5 +1,8 @@
 const logger = require('../../logger');
 const { withRetry } = require('../../utils/retry');
+const LRUCache = require('../../utils/cache');
+
+const searchCache = new LRUCache(100, 900000); // 15 min TTL
 
 module.exports = {
   name: 'brave_search',
@@ -19,6 +22,13 @@ module.exports = {
     }
 
     const count = Math.min(10, Math.max(1, args.count || 5));
+    const cacheKey = `brave:${args.query}:${count}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached) {
+      logger.info('BraveSearch', `Cache hit for "${args.query}"`);
+      return cached;
+    }
+
     const params = new URLSearchParams({ q: args.query, count: String(count) });
     const res = await withRetry(() => fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
       headers: {
@@ -39,6 +49,9 @@ module.exports = {
       snippet: r.description || '',
     }));
 
-    return results.length > 0 ? results : [{ title: 'No results', url: '', snippet: 'No results found.' }];
+    const finalResults = results.length > 0 ? results : [{ title: 'No results', url: '', snippet: 'No results found.' }];
+    searchCache.set(cacheKey, finalResults);
+    return finalResults;
   },
+  getCache() { return searchCache; },
 };

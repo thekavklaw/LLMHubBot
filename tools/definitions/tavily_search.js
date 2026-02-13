@@ -1,5 +1,8 @@
 const logger = require('../../logger');
 const { withRetry } = require('../../utils/retry');
+const LRUCache = require('../../utils/cache');
+
+const searchCache = new LRUCache(100, 900000); // 15 min TTL
 
 module.exports = {
   name: 'tavily_search',
@@ -17,6 +20,14 @@ module.exports = {
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) {
       throw new Error('TAVILY_API_KEY not configured');
+    }
+
+    const depth = args.search_depth || 'basic';
+    const cacheKey = `tavily:${args.query}:${depth}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached) {
+      logger.info('TavilySearch', `Cache hit for "${args.query}"`);
+      return cached;
     }
 
     const res = await withRetry(() => fetch('https://api.tavily.com/search', {
@@ -37,7 +48,7 @@ module.exports = {
     }
 
     const data = await res.json();
-    return {
+    const result = {
       answer: data.answer || null,
       results: (data.results || []).map(r => ({
         title: r.title || '',
@@ -45,5 +56,8 @@ module.exports = {
         content: (r.content || '').substring(0, 500),
       })),
     };
+    searchCache.set(cacheKey, result);
+    return result;
   },
+  getCache() { return searchCache; },
 };
