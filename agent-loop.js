@@ -1,3 +1,10 @@
+/**
+ * @module agent-loop
+ * @description Iterative tool-calling agent loop. Sends messages to OpenAI with
+ * available tools, processes tool calls, and loops until the model produces a
+ * final text response or max iterations are reached.
+ */
+
 const logger = require('./logger');
 
 class AgentLoop {

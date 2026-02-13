@@ -1,6 +1,7 @@
 /**
- * LRU Cache with TTL support.
- * Used for caching tool results (search, definitions, etc.)
+ * @module utils/cache
+ * @description LRU Cache with TTL support. Used for caching tool results
+ * (search, definitions, etc.) with automatic eviction and expiry.
  */
 class LRUCache {
   constructor(maxSize = 100, defaultTTL = 900000) { // 15 min default

@@ -1,3 +1,9 @@
+/**
+ * @module thinking/layer4-synthesize
+ * @description Response synthesis layer. Formats raw execution output for Discord,
+ * handling message splitting, code block preservation, and image attachments.
+ */
+
 const { AttachmentBuilder } = require('discord.js');
 const logger = require('../logger');
 

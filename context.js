@@ -1,3 +1,9 @@
+/**
+ * @module context
+ * @description Manages per-channel conversation context with SQLite persistence,
+ * automatic token budget management, and context summarization.
+ */
+
 const { generateResponse } = require('./openai-client');
 const { countMessagesTokens } = require('./tokenizer');
 const { saveSummary, getLatestSummary, insertContext, loadContext, clearContext: clearContextDb, updateContextByMsgId, deleteContextByMsgId, trimContext } = require('./db');

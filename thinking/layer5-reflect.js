@@ -1,3 +1,9 @@
+/**
+ * @module thinking/layer5-reflect
+ * @description Async reflection layer that runs after responses are sent. Extracts
+ * user facts, stores memories, and triggers periodic soul reflection.
+ */
+
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
 const { withRetry } = require('../utils/retry');

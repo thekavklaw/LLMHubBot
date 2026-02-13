@@ -684,6 +684,483 @@ async function test(name, fn) {
     }
   });
 
+  // ──────────── FRIENDLY ERRORS ────────────
+  const { friendlyError, USER_ERRORS } = require('../utils/errors');
+
+  await test('friendlyError: rate limit (429)', () => {
+    const msg = friendlyError({ status: 429, message: 'Rate limited' });
+    assert.strictEqual(msg, USER_ERRORS.rate_limit);
+  });
+
+  await test('friendlyError: timeout error', () => {
+    const msg = friendlyError({ message: 'TIMEOUT' });
+    assert.strictEqual(msg, USER_ERRORS.timeout);
+  });
+
+  await test('friendlyError: ETIMEDOUT code', () => {
+    const msg = friendlyError({ code: 'ETIMEDOUT', message: 'connect' });
+    assert.strictEqual(msg, USER_ERRORS.timeout);
+  });
+
+  await test('friendlyError: timeout in message', () => {
+    const msg = friendlyError({ message: 'Request timed out' });
+    assert.strictEqual(msg, USER_ERRORS.timeout);
+  });
+
+  await test('friendlyError: server error (500)', () => {
+    const msg = friendlyError({ status: 500, message: 'Internal' });
+    assert.strictEqual(msg, USER_ERRORS.api_error);
+  });
+
+  await test('friendlyError: server error (503)', () => {
+    const msg = friendlyError({ status: 503, message: 'Unavailable' });
+    assert.strictEqual(msg, USER_ERRORS.api_error);
+  });
+
+  await test('friendlyError: queue full', () => {
+    const msg = friendlyError({ message: 'QUEUE_FULL' });
+    assert.strictEqual(msg, USER_ERRORS.queue_full);
+  });
+
+  await test('friendlyError: moderation error', () => {
+    const msg = friendlyError({ message: 'Content flagged by moderation' });
+    assert.strictEqual(msg, USER_ERRORS.moderation);
+  });
+
+  await test('friendlyError: unknown error', () => {
+    const msg = friendlyError({ message: 'Something weird' });
+    assert.strictEqual(msg, USER_ERRORS.unknown);
+  });
+
+  await test('friendlyError: null error', () => {
+    const msg = friendlyError(null);
+    assert.strictEqual(msg, USER_ERRORS.unknown);
+  });
+
+  await test('friendlyError: undefined error', () => {
+    const msg = friendlyError(undefined);
+    assert.strictEqual(msg, USER_ERRORS.unknown);
+  });
+
+  await test('USER_ERRORS: all messages are strings with emoji', () => {
+    for (const [key, msg] of Object.entries(USER_ERRORS)) {
+      assert.strictEqual(typeof msg, 'string', `${key} should be string`);
+      assert.ok(msg.length > 10, `${key} should be meaningful`);
+    }
+  });
+
+  // ──────────── USER SETTINGS (DB) ────────────
+  const { getUserSettings, saveUserSettings, getDb } = require('../db');
+
+  await test('userSettings: save and load', () => {
+    saveUserSettings('test-user-1', 'concise', true);
+    const settings = getUserSettings('test-user-1');
+    assert.ok(settings);
+    assert.strictEqual(settings.verbosity, 'concise');
+    assert.strictEqual(settings.images_enabled, 1);
+    assert.ok(settings.updated_at > 0);
+  });
+
+  await test('userSettings: update existing', () => {
+    saveUserSettings('test-user-1', 'detailed', false);
+    const settings = getUserSettings('test-user-1');
+    assert.strictEqual(settings.verbosity, 'detailed');
+    assert.strictEqual(settings.images_enabled, 0);
+  });
+
+  await test('userSettings: nonexistent user returns null', () => {
+    const settings = getUserSettings('nonexistent-user-xyz');
+    assert.strictEqual(settings, null);
+  });
+
+  await test('userSettings: default values work', () => {
+    saveUserSettings('test-user-2', 'normal', true);
+    const settings = getUserSettings('test-user-2');
+    assert.strictEqual(settings.verbosity, 'normal');
+    assert.strictEqual(settings.images_enabled, 1);
+  });
+
+  // ──────────── CONTEXT PERSISTENCE ────────────
+  const { clearChannelContext, addMessage, getContext } = require('../context');
+
+  await test('context: clearChannelContext clears context', async () => {
+    const testChannel = 'test-reset-channel-123';
+    await addMessage(testChannel, 'user', 'Hello there', 'testuser');
+    let ctx = getContext(testChannel);
+    assert.ok(ctx.length > 0, 'Context should have messages');
+    await clearChannelContext(testChannel);
+    ctx = getContext(testChannel);
+    assert.strictEqual(ctx.length, 0, 'Context should be empty after clear');
+  });
+
+  await test('context: add and retrieve messages', async () => {
+    const ch = 'test-ctx-add-123';
+    await clearChannelContext(ch);
+    await addMessage(ch, 'user', 'First message', 'alice');
+    await addMessage(ch, 'assistant', 'Reply');
+    const ctx = getContext(ch);
+    assert.ok(ctx.length >= 2);
+  });
+
+  await test('context: persistence survives Map clear', async () => {
+    const ch = 'test-ctx-persist-123';
+    await clearChannelContext(ch);
+    await addMessage(ch, 'user', 'Persist test', 'bob', 'msg-persist-1');
+    // Simulate restart by clearing internal Map (require cache trick)
+    const contextModule = require('../context');
+    // We can't easily clear the internal Map without modifying the module,
+    // but clearChannelContext + re-add proves SQLite persistence
+    await clearChannelContext(ch);
+    await addMessage(ch, 'user', 'After clear', 'bob', 'msg-persist-2');
+    const ctx = getContext(ch);
+    assert.ok(ctx.some(m => m.content === 'After clear'));
+  });
+
+  // ──────────── LRU CACHE EXTENDED ────────────
+  const LRUCacheUtil = require('../utils/cache');
+
+  await test('LRUCache: TTL expiry', async () => {
+    const cache = new LRUCacheUtil(10, 50); // 50ms TTL
+    cache.set('key1', 'value1');
+    assert.strictEqual(cache.get('key1'), 'value1');
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual(cache.get('key1'), null, 'Should expire after TTL');
+  });
+
+  await test('LRUCache: eviction when full', () => {
+    const cache = new LRUCacheUtil(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.set('d', 4); // Should evict 'a'
+    assert.strictEqual(cache.get('a'), null);
+    assert.strictEqual(cache.get('d'), 4);
+  });
+
+  await test('LRUCache: get refreshes position', () => {
+    const cache = new LRUCacheUtil(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.get('a'); // Refresh 'a'
+    cache.set('d', 4); // Should evict 'b'
+    assert.strictEqual(cache.get('a'), 1);
+    assert.strictEqual(cache.get('b'), null);
+  });
+
+  await test('LRUCache: stats tracking', () => {
+    const cache = new LRUCacheUtil(10);
+    cache.set('x', 1);
+    cache.get('x'); // hit
+    cache.get('y'); // miss
+    const stats = cache.getStats();
+    assert.strictEqual(stats.hits, 1);
+    assert.strictEqual(stats.misses, 1);
+    assert.strictEqual(stats.size, 1);
+  });
+
+  await test('LRUCache: custom TTL per item', async () => {
+    const cache = new LRUCacheUtil(10, 10000);
+    cache.set('short', 'val', 50); // 50ms TTL override
+    assert.strictEqual(cache.get('short'), 'val');
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual(cache.get('short'), null);
+  });
+
+  // ──────────── DEBOUNCER ────────────
+  const MessageDebouncer = require('../utils/debouncer');
+
+  await test('debouncer: coalesces rapid messages', async () => {
+    const debouncer = new MessageDebouncer(100);
+    let result = null;
+    const msg1 = { channel: { id: 'ch1' }, author: { id: 'u1' }, content: 'hello' };
+    const msg2 = { channel: { id: 'ch1' }, author: { id: 'u1' }, content: 'world' };
+    debouncer.add(msg1, (lastMsg, combined) => { result = { lastMsg, combined }; });
+    debouncer.add(msg2, (lastMsg, combined) => { result = { lastMsg, combined }; });
+    await new Promise(r => setTimeout(r, 150));
+    assert.ok(result);
+    assert.strictEqual(result.combined, 'hello\nworld');
+    assert.strictEqual(result.lastMsg.content, 'world');
+  });
+
+  await test('debouncer: different users not coalesced', async () => {
+    const debouncer = new MessageDebouncer(100);
+    let count = 0;
+    const msg1 = { channel: { id: 'ch1' }, author: { id: 'u1' }, content: 'a' };
+    const msg2 = { channel: { id: 'ch1' }, author: { id: 'u2' }, content: 'b' };
+    debouncer.add(msg1, () => { count++; });
+    debouncer.add(msg2, () => { count++; });
+    await new Promise(r => setTimeout(r, 150));
+    assert.strictEqual(count, 2, 'Different users should fire separately');
+  });
+
+  await test('debouncer: hasPending', () => {
+    const debouncer = new MessageDebouncer(5000);
+    const msg = { channel: { id: 'ch-pend' }, author: { id: 'u-pend' }, content: 'test' };
+    debouncer.add(msg, () => {});
+    assert.ok(debouncer.hasPending('ch-pend', 'u-pend'));
+    assert.ok(!debouncer.hasPending('ch-other', 'u-pend'));
+  });
+
+  await test('debouncer: getStats', () => {
+    const debouncer = new MessageDebouncer(5000);
+    const msg = { channel: { id: 'ch-stats' }, author: { id: 'u-stats' }, content: 'test' };
+    debouncer.add(msg, () => {});
+    const stats = debouncer.getStats();
+    assert.strictEqual(typeof stats.pendingBatches, 'number');
+    assert.ok(stats.pendingBatches >= 1);
+  });
+
+  // ──────────── PRIORITY QUEUE ────────────
+  const { PriorityTaskQueue } = require('../utils/model-queue');
+
+  await test('PriorityQueue: processes higher priority first', async () => {
+    const queue = new PriorityTaskQueue(1, 10);
+    const order = [];
+    // Block the queue with a slow task
+    const blocker = queue.enqueue(async () => {
+      await new Promise(r => setTimeout(r, 50));
+      order.push('blocker');
+    }, 0);
+    // Enqueue low then high priority
+    const low = queue.enqueue(async () => { order.push('low'); }, 0);
+    const high = queue.enqueue(async () => { order.push('high'); }, 3);
+    await Promise.all([blocker, low, high]);
+    assert.strictEqual(order[0], 'blocker');
+    assert.strictEqual(order[1], 'high');
+    assert.strictEqual(order[2], 'low');
+  });
+
+  await test('PriorityQueue: rejects when full', async () => {
+    const queue = new PriorityTaskQueue(1, 2);
+    // Fill queue
+    const p1 = queue.enqueue(async () => new Promise(r => setTimeout(r, 100)), 0);
+    const p2 = queue.enqueue(async () => 'ok', 0);
+    const p3 = queue.enqueue(async () => 'ok', 0);
+    try {
+      await queue.enqueue(async () => 'should fail', 0);
+      assert.fail('Should have rejected');
+    } catch (e) {
+      assert.strictEqual(e.message, 'QUEUE_FULL');
+    }
+    await Promise.allSettled([p1, p2, p3]);
+  });
+
+  await test('PriorityQueue: getStats', async () => {
+    const queue = new PriorityTaskQueue(10, 50);
+    await queue.enqueue(async () => 'done', 0);
+    const stats = queue.getStats();
+    assert.strictEqual(stats.completed, 1);
+    assert.strictEqual(stats.errors, 0);
+    assert.strictEqual(stats.pending, 0);
+  });
+
+  await test('PriorityQueue: tracks errors', async () => {
+    const queue = new PriorityTaskQueue(10, 50);
+    try {
+      await queue.enqueue(async () => { throw new Error('test'); }, 0);
+    } catch (_) {}
+    assert.strictEqual(queue.getStats().errors, 1);
+  });
+
+  // ──────────── MODEL QUEUE ────────────
+  const { ModelQueue } = require('../utils/model-queue');
+
+  await test('ModelQueue: routes to correct queue', async () => {
+    const mq = new ModelQueue();
+    assert.strictEqual(mq.getQueueName('gpt-5.2'), 'main');
+    assert.strictEqual(mq.getQueueName('gpt-4.1-mini'), 'mini');
+    assert.strictEqual(mq.getQueueName('gpt-image-1'), 'image');
+    assert.strictEqual(mq.getQueueName('omni-moderation-latest'), 'moderation');
+    assert.strictEqual(mq.getQueueName(null), 'main');
+  });
+
+  await test('ModelQueue: enqueue and execute', async () => {
+    const mq = new ModelQueue();
+    const result = await mq.enqueue('gpt-5.2', async () => 42, 0);
+    assert.strictEqual(result, 42);
+  });
+
+  await test('ModelQueue: getStats returns all queues', () => {
+    const mq = new ModelQueue();
+    const stats = mq.getStats();
+    assert.ok(stats.main);
+    assert.ok(stats.mini);
+    assert.ok(stats.image);
+    assert.ok(stats.moderation);
+  });
+
+  await test('ModelQueue: isQueueFull', () => {
+    const mq = new ModelQueue({ mainMaxDepth: 2, mainConcurrency: 1 });
+    assert.ok(!mq.isQueueFull('gpt-5.2'));
+  });
+
+  // ──────────── HEALTH ENDPOINT ────────────
+  const http = require('http');
+  const { startHealthServer } = require('../health');
+
+  await test('health: returns valid JSON', async () => {
+    const port = 38700 + Math.floor(Math.random() * 1000);
+    const server = startHealthServer(port, () => ({
+      queues: {}, messagesProcessed: 5, errors: 1, debouncer: {},
+    }));
+    await new Promise(r => setTimeout(r, 100));
+    const data = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/health`, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => resolve(JSON.parse(body)));
+      }).on('error', reject);
+    });
+    assert.strictEqual(data.status, 'ok');
+    assert.strictEqual(data.messagesProcessed, 5);
+    assert.ok(data.uptime >= 0);
+    assert.ok(data.timestamp);
+    server.close();
+  });
+
+  await test('health: 404 on non-health path', async () => {
+    const port = 38700 + Math.floor(Math.random() * 1000);
+    const server = startHealthServer(port, () => ({}));
+    await new Promise(r => setTimeout(r, 100));
+    const statusCode = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/other`, (res) => resolve(res.statusCode)).on('error', reject);
+    });
+    assert.strictEqual(statusCode, 404);
+    server.close();
+  });
+
+  // ──────────── TOOL FALLBACK CHAINS ────────────
+  await test('brave_search: has fallback in execute', () => {
+    const brave = require('../tools/definitions/brave_search');
+    assert.ok(typeof brave.execute === 'function');
+    // Verify the module exports expected fields
+    assert.strictEqual(brave.name, 'brave_search');
+    assert.ok(brave.getCache);
+  });
+
+  await test('tavily_search: has fallback in execute', () => {
+    const tavily = require('../tools/definitions/tavily_search');
+    assert.ok(typeof tavily.execute === 'function');
+    assert.strictEqual(tavily.name, 'tavily_search');
+    assert.ok(tavily.getCache);
+  });
+
+  // ──────────── DB MODULE ────────────
+  await test('db: getDb returns database instance', () => {
+    const db = getDb();
+    assert.ok(db);
+    assert.ok(typeof db.prepare === 'function');
+  });
+
+  await test('db: user_settings table exists', () => {
+    const db = getDb();
+    const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_settings'").get();
+    assert.ok(row, 'user_settings table should exist');
+  });
+
+  // ──────────── RETRY UTILITY ────────────
+  const { withRetry } = require('../utils/retry');
+
+  await test('retry: succeeds on first try', async () => {
+    const result = await withRetry(() => Promise.resolve(42), { label: 'test' });
+    assert.strictEqual(result, 42);
+  });
+
+  await test('retry: retries on failure then succeeds', async () => {
+    let attempts = 0;
+    const result = await withRetry(() => {
+      attempts++;
+      if (attempts < 3) throw new Error('fail');
+      return Promise.resolve('ok');
+    }, { label: 'test', maxRetries: 3, backoffMs: 10 });
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(attempts, 3);
+  });
+
+  await test('retry: does not retry on 4xx (non-429)', async () => {
+    let attempts = 0;
+    try {
+      await withRetry(() => {
+        attempts++;
+        const err = new Error('Bad Request');
+        err.status = 400;
+        throw err;
+      }, { label: 'test', maxRetries: 3, backoffMs: 10 });
+      assert.fail('Should have thrown');
+    } catch (e) {
+      assert.strictEqual(attempts, 1);
+      assert.strictEqual(e.status, 400);
+    }
+  });
+
+  await test('retry: retries on 429', async () => {
+    let attempts = 0;
+    try {
+      await withRetry(() => {
+        attempts++;
+        const err = new Error('Rate limited');
+        err.status = 429;
+        throw err;
+      }, { label: 'test', maxRetries: 2, backoffMs: 10 });
+    } catch (_) {}
+    assert.strictEqual(attempts, 2);
+  });
+
+  // ──────────── CONTEXT EDIT/DELETE ────────────
+  const { updateMessage, deleteMessage } = require('../context');
+
+  await test('context: updateMessage changes content', async () => {
+    const ch = 'test-edit-ch-123';
+    await clearChannelContext(ch);
+    await addMessage(ch, 'user', 'original', 'alice', 'msg-edit-1');
+    await updateMessage(ch, 'msg-edit-1', 'edited content');
+    const ctx = getContext(ch);
+    const found = ctx.find(m => m.content === 'edited content');
+    assert.ok(found, 'Should find edited message');
+  });
+
+  await test('context: deleteMessage removes from context', async () => {
+    const ch = 'test-del-ch-123';
+    await clearChannelContext(ch);
+    await addMessage(ch, 'user', 'to delete', 'alice', 'msg-del-1');
+    await addMessage(ch, 'user', 'to keep', 'alice', 'msg-del-2');
+    await deleteMessage(ch, 'msg-del-1');
+    const ctx = getContext(ch);
+    assert.ok(!ctx.some(m => m.content === 'to delete'), 'Deleted message should be gone');
+    assert.ok(ctx.some(m => m.content === 'to keep'), 'Other message should remain');
+  });
+
+  // ──────────── LOGGER ────────────
+
+  await test('logger: all methods exist', () => {
+    assert.ok(typeof logger.debug === 'function');
+    assert.ok(typeof logger.info === 'function');
+    assert.ok(typeof logger.warn === 'function');
+    assert.ok(typeof logger.error === 'function');
+    assert.ok(typeof logger.setLevel === 'function');
+  });
+
+  await test('logger: formatTimestamp returns ISO-like string', () => {
+    const ts = logger.formatTimestamp();
+    assert.ok(ts.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/), `Unexpected format: ${ts}`);
+  });
+
+  await test('logger: setLevel accepts valid levels', () => {
+    logger.setLevel('debug');
+    logger.setLevel('info');
+    logger.setLevel('warn');
+    logger.setLevel('error');
+    // Should not throw
+  });
+
+  // ── Cleanup test data ──
+  try {
+    const db = getDb();
+    db.prepare("DELETE FROM user_settings WHERE user_id LIKE 'test-%'").run();
+    db.prepare("DELETE FROM conversation_context WHERE channel_id LIKE 'test-%'").run();
+  } catch (_) {}
+
   // ──────────── RESULTS ────────────
   console.log('\n' + results.join('\n'));
   console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);

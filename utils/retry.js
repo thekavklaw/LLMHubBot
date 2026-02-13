@@ -1,3 +1,9 @@
+/**
+ * @module utils/retry
+ * @description Retry wrapper with exponential backoff. Respects 429 Retry-After
+ * headers and skips retries on non-retryable client errors.
+ */
+
 const logger = require('../logger');
 
 /**

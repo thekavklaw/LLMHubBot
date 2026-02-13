@@ -1,8 +1,15 @@
+/**
+ * @module thinking/layer2-intent
+ * @description Analyzes user intent, determines response approach, and gathers
+ * relevant context (memories, user profile, settings) for downstream layers.
+ */
+
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
 const { withRetry } = require('../utils/retry');
 const { searchMemory } = require('../memory');
 const { getProfile, formatProfileForPrompt } = require('../users');
+const { getUserSettings } = require('../db');
 
 /**
  * Layer 2: Intent Analysis
@@ -23,11 +30,25 @@ async function analyzeIntent(message, context, gate) {
     logger.debug('Intent', `Memory relevance scores: ${memories.map(m => m.similarity ? m.similarity.toFixed(3) : 'n/a').join(', ')}`);
   }
 
+  // Load user settings
+  const userSettings = getUserSettings(userId);
+  if (userSettings) {
+    logger.debug('Intent', `User settings: verbosity=${userSettings.verbosity}, images=${userSettings.images_enabled}`);
+  }
+
   const profileStr = profile ? formatProfileForPrompt(userId) : '';
   if (profileStr) logger.debug('Intent', `User profile summary: ${profileStr.slice(0, 150)}`);
   const memoriesStr = memories.length > 0
     ? memories.map(m => `- ${m.content}`).join('\n')
     : '';
+
+  // Build settings instructions
+  let settingsInstruction = '';
+  if (userSettings) {
+    if (userSettings.verbosity === 'concise') settingsInstruction += ' User prefers concise, shorter responses.';
+    if (userSettings.verbosity === 'detailed') settingsInstruction += ' User prefers detailed, thorough responses.';
+    if (!userSettings.images_enabled) settingsInstruction += ' Do NOT suggest image generation for this user.';
+  }
 
   // Get available tool names for context
   const toolNames = context.toolRegistry
@@ -40,7 +61,7 @@ async function analyzeIntent(message, context, gate) {
     const result = await withRetry(() => thinkWithModel([
       {
         role: 'system',
-        content: `Analyze user intent for a Discord AI bot response. Available tools:\n${toolNames || 'none'}\n\nReturn JSON:
+        content: `Analyze user intent for a Discord AI bot response.${settingsInstruction} Available tools:\n${toolNames || 'none'}\n\nReturn JSON:
 {
   "intent": "question|request|creative|discussion|greeting|help|image_request",
   "suggestedTools": ["tool_name"],

@@ -1,3 +1,9 @@
+/**
+ * @module memory
+ * @description RAG-based long-term memory system. Stores facts with embeddings
+ * and retrieves them via cosine similarity search. Includes automatic pruning.
+ */
+
 const OpenAI = require('openai');
 const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories } = require('./db');
 const logger = require('./logger');

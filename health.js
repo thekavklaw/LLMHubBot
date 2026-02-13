@@ -1,3 +1,9 @@
+/**
+ * @module health
+ * @description HTTP health endpoint for monitoring. Returns JSON with uptime,
+ * memory usage, queue stats, and error counts on GET /health.
+ */
+
 const http = require('http');
 const logger = require('./logger');
 

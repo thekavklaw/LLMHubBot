@@ -1,3 +1,10 @@
+/**
+ * @module thinking/orchestrator
+ * @description 5-layer thinking pipeline orchestrator. Runs messages through
+ * Gate → Intent → Execute → Synthesize → Reflect with graceful degradation
+ * under load and comprehensive error recovery at each layer.
+ */
+
 const logger = require('../logger');
 const { relevanceGate } = require('./layer1-gate');
 const { analyzeIntent } = require('./layer2-intent');
@@ -113,9 +120,10 @@ class ThinkingOrchestrator {
         result = { text, toolsUsed: [], iterations: 0, images: [] };
       } catch (fallbackErr) {
         logger.error('Orchestrator', 'Layer 3 fallback also failed:', { error: fallbackErr.message });
+        const { friendlyError } = require('../utils/errors');
         return {
           action: 'respond',
-          messages: [{ content: "I'm having trouble connecting right now — try again in a moment! 🔄" }],
+          messages: [{ content: friendlyError(fallbackErr) }],
           images: [], text: '', toolsUsed: [],
         };
       }

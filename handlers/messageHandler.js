@@ -1,3 +1,10 @@
+/**
+ * @module handlers/messageHandler
+ * @description Core message processing pipeline. Handles debouncing, moderation,
+ * context management, and routes messages through the 5-layer thinking system
+ * or legacy fallback paths. Manages per-model queuing and backpressure.
+ */
+
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { getSystemPrompt, getSoulConfig, reflectAndUpdate } = require('../soul');
 const { generateResponse, generateImage } = require('../openai-client');
@@ -19,6 +26,7 @@ const config = require('../config');
 const logger = require('../logger');
 const { ModelQueue } = require('../utils/model-queue');
 const MessageDebouncer = require('../utils/debouncer');
+const { friendlyError } = require('../utils/errors');
 
 // ── Per-model queue system ──
 const modelQueue = new ModelQueue({
@@ -383,22 +391,10 @@ async function processMessage(message, content) {
   } catch (err) {
     errorCount++;
     updateHealth();
-    if (err.message === 'QUEUE_FULL') {
-      logger.warn('MessageHandler', 'Queue full');
-      try {
-        await message.channel.send("I'm a bit busy right now! Give me a moment and try again. 🕐");
-      } catch (_) {}
-    } else if (err.message === 'TIMEOUT') {
-      logger.warn('MessageHandler', 'OpenAI timeout');
-      try {
-        await message.channel.send({ embeds: [errorEmbed("Sorry, I'm a bit busy right now. Try again in a moment.")] });
-      } catch (_) {}
-    } else {
-      logger.error('MessageHandler', 'Error:', err);
-      try {
-        await message.channel.send({ embeds: [errorEmbed("Sorry, I encountered an error. Try again in a moment.")] });
-      } catch (_) {}
-    }
+    logger.error('MessageHandler', 'Error:', err);
+    try {
+      await message.channel.send({ embeds: [errorEmbed(friendlyError(err))] });
+    } catch (_) {}
   }
 }
 

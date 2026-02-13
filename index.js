@@ -1,3 +1,10 @@
+/**
+ * @module index
+ * @description Main entry point for the LLMHub Discord bot. Sets up the Discord client,
+ * registers slash commands, initializes the tool registry, agent loop, and thinking
+ * orchestrator, and wires up all event handlers.
+ */
+
 const config = require('./config');
 const logger = require('./logger');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -48,9 +55,22 @@ async function registerCommands() {
     const toolsCmd = new SlashCommandBuilder()
       .setName('tools')
       .setDescription('List all available tools LLMHub can use');
+    const resetCmd = new SlashCommandBuilder()
+      .setName('reset')
+      .setDescription('Clear conversation context for this channel');
+    const settingsCmd = new SlashCommandBuilder()
+      .setName('settings')
+      .setDescription('Configure your LLMHub preferences')
+      .addStringOption(opt => opt.setName('verbosity').setDescription('Response length preference')
+        .addChoices(
+          { name: 'Concise', value: 'concise' },
+          { name: 'Normal', value: 'normal' },
+          { name: 'Detailed', value: 'detailed' },
+        ))
+      .addBooleanOption(opt => opt.setName('images').setDescription('Enable/disable image generation in responses'));
     await rest.put(
       Routes.applicationGuildCommands(config.appId, config.guildId),
-      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON()] }
+      { body: [chatCmd.toJSON(), imagineCmd.toJSON(), toolsCmd.toJSON(), resetCmd.toJSON(), settingsCmd.toJSON()] }
     );
     logger.info('Bot', 'Slash commands registered');
   } catch (err) {

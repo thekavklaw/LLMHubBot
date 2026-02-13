@@ -1,3 +1,9 @@
+/**
+ * @module tools/registry
+ * @description Tool registry that discovers, loads, and manages tool definitions.
+ * Provides OpenAI-compatible tool schemas and handles tool execution with timeouts.
+ */
+
 const fs = require('fs');
 const path = require('path');
 const logger = require('../logger');

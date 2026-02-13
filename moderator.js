@@ -1,3 +1,9 @@
+/**
+ * @module moderator
+ * @description Content moderation using OpenAI's omni-moderation-latest model.
+ * Checks both inbound messages and outbound responses for policy violations.
+ */
+
 const OpenAI = require('openai');
 const config = require('./config');
 const logger = require('./logger');

@@ -1,3 +1,9 @@
+/**
+ * @module thinking/layer3-execute
+ * @description Execution layer that builds enhanced system prompts from intent
+ * analysis and runs the agent loop with all available tools.
+ */
+
 const logger = require('../logger');
 const { getSystemPrompt } = require('../soul');
 const { getContext } = require('../context');

@@ -1,3 +1,10 @@
+/**
+ * @module utils/model-queue
+ * @description Per-model priority queue system. Routes tasks to separate queues
+ * based on model type (main/mini/image/moderation) with configurable concurrency
+ * and max depth. Higher priority tasks are processed first.
+ */
+
 const logger = require('../logger');
 
 /**

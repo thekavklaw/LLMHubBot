@@ -1,6 +1,14 @@
+/**
+ * @module handlers/interactionHandler
+ * @description Handles Discord slash command interactions (/chat, /imagine, /tools, /reset, /settings).
+ */
+
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createChatThread } = require('../threads');
-const { generateImage } = require('../openai-client');
+const { generateImage, thinkWithModel } = require('../openai-client');
+const { clearChannelContext } = require('../context');
+const { getUserSettings, saveUserSettings } = require('../db');
+const { friendlyError } = require('../utils/errors');
 const config = require('../config');
 const logger = require('../logger');
 
@@ -73,6 +81,49 @@ async function handleInteraction(interaction) {
     }
   }
 
+  if (interaction.commandName === 'reset') {
+    try {
+      const channelId = interaction.channel?.id;
+      await clearChannelContext(channelId);
+      return interaction.reply({ content: '🔄 Conversation context cleared! I\'ll start fresh.', ephemeral: true });
+    } catch (err) {
+      logger.error('Interaction', '/reset error:', err);
+      return interaction.reply({ content: friendlyError(err), ephemeral: true });
+    }
+  }
+
+  if (interaction.commandName === 'settings') {
+    try {
+      const userId = interaction.user.id;
+      const verbosity = interaction.options.getString('verbosity');
+      const images = interaction.options.getBoolean('images');
+
+      // Load current settings
+      let current = getUserSettings(userId) || { verbosity: 'normal', images_enabled: 1 };
+
+      // Update if options provided
+      const newVerbosity = verbosity || current.verbosity || 'normal';
+      const newImages = images !== null && images !== undefined ? images : !!current.images_enabled;
+
+      saveUserSettings(userId, newVerbosity, newImages);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('⚙️ Your Settings')
+        .addFields(
+          { name: '📝 Verbosity', value: newVerbosity, inline: true },
+          { name: '🎨 Images', value: newImages ? 'Enabled' : 'Disabled', inline: true },
+        )
+        .setFooter({ text: 'Use /settings to change these anytime' })
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (err) {
+      logger.error('Interaction', '/settings error:', err);
+      return interaction.reply({ content: friendlyError(err), ephemeral: true });
+    }
+  }
+
   if (interaction.commandName === 'chat') {
     try {
       await interaction.deferReply({ ephemeral: true });
@@ -81,12 +132,15 @@ async function handleInteraction(interaction) {
         .setColor(0x57F287)
         .setDescription(`✅ Thread created! Head over to ${thread}`);
       await interaction.editReply({ embeds: [embed] });
+
+      // Smart thread title: after first response, rename with a topic summary
+      smartRenameThread(thread).catch(err => logger.error('Interaction', 'Smart rename error:', err));
     } catch (err) {
       logger.error('Interaction', 'Error:', err);
       try {
         const reply = interaction.deferred
-          ? interaction.editReply({ content: "Sorry, I couldn't create a thread." })
-          : interaction.reply({ content: "Sorry, I couldn't create a thread.", ephemeral: true });
+          ? interaction.editReply({ content: friendlyError(err) })
+          : interaction.reply({ content: friendlyError(err), ephemeral: true });
         await reply;
       } catch (_) {}
     }
@@ -132,4 +186,49 @@ async function handleInteraction(interaction) {
   }
 }
 
-module.exports = { handleInteraction };
+/**
+ * Wait for the first user message in a thread, then rename with a smart title.
+ * @param {Object} thread - Discord thread channel
+ */
+async function smartRenameThread(thread) {
+  // Wait up to 60s for first user message
+  try {
+    const collected = await thread.awaitMessages({
+      filter: m => !m.author.bot,
+      max: 1,
+      time: 60000,
+    });
+    const firstMsg = collected.first();
+    if (!firstMsg || !firstMsg.content) return;
+
+    const result = await thinkWithModel([
+      { role: 'system', content: 'Summarize this message topic in 3-5 words for a thread title. Return JSON: {"title":"..."}' },
+      { role: 'user', content: firstMsg.content.slice(0, 300) },
+    ], 'gpt-4.1-mini');
+
+    const parsed = JSON.parse(result);
+    const title = parsed.title || 'Chat';
+    await thread.setName(title.slice(0, 100));
+    logger.info('Interaction', `Smart-renamed thread ${thread.id} to "${title}"`);
+  } catch (err) {
+    logger.warn('Interaction', `Smart rename fallback for thread ${thread.id}:`, err.message);
+    // Don't change name on failure — keep the default
+  }
+}
+
+/**
+ * Generate a smart thread title from content.
+ * Exported for testing.
+ * @param {string} content - Message content to summarize
+ * @returns {Promise<string>} A 3-5 word title
+ */
+async function generateSmartTitle(content) {
+  const result = await thinkWithModel([
+    { role: 'system', content: 'Summarize this message topic in 3-5 words for a thread title. Return JSON: {"title":"..."}' },
+    { role: 'user', content: content.slice(0, 300) },
+  ], 'gpt-4.1-mini');
+  const parsed = JSON.parse(result);
+  return parsed.title || 'Chat';
+}
+
+module.exports = { handleInteraction, generateSmartTitle };

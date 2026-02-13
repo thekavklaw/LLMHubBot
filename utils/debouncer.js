@@ -1,6 +1,7 @@
 /**
- * Message debouncer — coalesces rapid messages from the same user+channel
- * into a single processing call.
+ * @module utils/debouncer
+ * @description Message debouncer that coalesces rapid messages from the same
+ * user+channel into a single processing call within a configurable time window.
  */
 class MessageDebouncer {
   constructor(windowMs = 3000) {

@@ -1,3 +1,9 @@
+/**
+ * @module logger
+ * @description Structured logging with file rotation. Supports debug/info/warn/error
+ * levels and writes to both console and data/bot.log with automatic rotation.
+ */
+
 const fs = require('fs');
 const path = require('path');
 

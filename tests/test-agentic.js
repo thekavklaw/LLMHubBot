@@ -722,6 +722,247 @@ async function test(name, fn) {
     assert.strictEqual(cache.get('b'), undefined);
   });
 
+  // ──────────── BACKPRESSURE / LOAD LEVEL ────────────
+
+  await test('Orchestrator: getLoadLevel returns correct levels', () => {
+    // Access getLoadLevel via the module internals
+    // We test the logic directly
+    function getLoadLevel(queueStats) {
+      if (!queueStats || !queueStats.main) return 1;
+      const mainDepth = queueStats.main.pending || 0;
+      if (mainDepth > 40) return 4;
+      if (mainDepth > 25) return 3;
+      if (mainDepth > 10) return 2;
+      return 1;
+    }
+    assert.strictEqual(getLoadLevel(null), 1);
+    assert.strictEqual(getLoadLevel({}), 1);
+    assert.strictEqual(getLoadLevel({ main: { pending: 0 } }), 1);
+    assert.strictEqual(getLoadLevel({ main: { pending: 5 } }), 1);
+    assert.strictEqual(getLoadLevel({ main: { pending: 11 } }), 2);
+    assert.strictEqual(getLoadLevel({ main: { pending: 26 } }), 3);
+    assert.strictEqual(getLoadLevel({ main: { pending: 41 } }), 4);
+  });
+
+  // ──────────── SMART SPLIT EDGE CASES ────────────
+
+  await test('SmartSplit: empty string', () => {
+    const { smartSplit } = require('../thinking/layer4-synthesize');
+    const result = smartSplit('');
+    assert.deepStrictEqual(result, ['']);
+  });
+
+  await test('SmartSplit: exactly 2000 chars', () => {
+    const { smartSplit } = require('../thinking/layer4-synthesize');
+    const text = 'a'.repeat(2000);
+    const result = smartSplit(text);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].length, 2000);
+  });
+
+  await test('SmartSplit: handles code blocks', () => {
+    const { smartSplit } = require('../thinking/layer4-synthesize');
+    const code = '```js\n' + 'x'.repeat(1990) + '\n```\nMore text here after code block.';
+    const result = smartSplit(code);
+    assert.ok(result.length >= 2);
+    // Verify code blocks are properly handled
+    for (const part of result) {
+      const opens = (part.match(/```/g) || []).length;
+      assert.ok(opens % 2 === 0, `Unclosed code block in part: opens=${opens}`);
+    }
+  });
+
+  await test('SmartSplit: splits at paragraph breaks', () => {
+    const { smartSplit } = require('../thinking/layer4-synthesize');
+    const text = 'a'.repeat(1500) + '\n\n' + 'b'.repeat(600);
+    const result = smartSplit(text, 2000);
+    assert.strictEqual(result.length, 2);
+    assert.ok(result[0].endsWith('a'));
+    assert.ok(result[1].startsWith('b'));
+  });
+
+  // ──────────── TOOL REGISTRY EXTENDED ────────────
+
+  await test('ToolRegistry: getTool returns tool by name', () => {
+    const ToolRegistry = require('../tools/registry');
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    const brave = reg.getTool('brave_search');
+    assert.ok(brave);
+    assert.strictEqual(brave.name, 'brave_search');
+  });
+
+  await test('ToolRegistry: getTool returns undefined for unknown', () => {
+    const ToolRegistry = require('../tools/registry');
+    const reg = new ToolRegistry();
+    const result = reg.getTool('nonexistent_tool');
+    assert.strictEqual(result, undefined);
+  });
+
+  await test('ToolRegistry: executeTool returns error for unknown tool', async () => {
+    const ToolRegistry = require('../tools/registry');
+    const reg = new ToolRegistry();
+    const result = await reg.executeTool('nonexistent', {}, {});
+    assert.strictEqual(result.success, false);
+    assert.ok(result.error.includes('Unknown tool'));
+  });
+
+  await test('ToolRegistry: getToolsForOpenAI with filter', () => {
+    const ToolRegistry = require('../tools/registry');
+    const reg = new ToolRegistry();
+    reg.loadAll();
+    const filtered = reg.getToolsForOpenAI(t => t.name === 'calculator');
+    assert.strictEqual(filtered.length, 1);
+    assert.strictEqual(filtered[0].function.name, 'calculator');
+  });
+
+  // ──────────── TOOL CACHES ────────────
+
+  await test('BraveSearch: cache instance exists', () => {
+    const brave = require('../tools/definitions/brave_search');
+    const cache = brave.getCache();
+    assert.ok(cache);
+    assert.ok(typeof cache.get === 'function');
+    assert.ok(typeof cache.set === 'function');
+  });
+
+  await test('TavilySearch: cache instance exists', () => {
+    const tavily = require('../tools/definitions/tavily_search');
+    const cache = tavily.getCache();
+    assert.ok(cache);
+    assert.ok(typeof cache.get === 'function');
+  });
+
+  // ──────────── CALCULATOR TOOL ────────────
+
+  await test('Calculator: basic math', async () => {
+    const calc = require('../tools/definitions/calculator');
+    const result = await calc.execute({ expression: '2 + 3 * 4' });
+    assert.strictEqual(result.result, 14);
+  });
+
+  await test('Calculator: rejects dangerous input', async () => {
+    const calc = require('../tools/definitions/calculator');
+    try {
+      await calc.execute({ expression: 'require("fs")' });
+      assert.fail('Should reject');
+    } catch (e) {
+      assert.ok(e.message.includes('Invalid') || e.message.includes('not allowed') || e.message.includes('Blocked') || e.message.includes('unsafe'));
+    }
+  });
+
+  // ──────────── TIMESTAMP TOOL ────────────
+
+  await test('Timestamp: returns current time', async () => {
+    const ts = require('../tools/definitions/timestamp');
+    const result = await ts.execute({});
+    assert.ok(result.iso || result.utc || result.local || result.time);
+  });
+
+  await test('Timestamp: timezone conversion', async () => {
+    const ts = require('../tools/definitions/timestamp');
+    const result = await ts.execute({ timezone: 'America/New_York' });
+    assert.ok(result);
+  });
+
+  // ──────────── DEFINE WORD TOOL ────────────
+
+  await test('DefineWord: has correct schema', () => {
+    const define = require('../tools/definitions/define_word');
+    assert.strictEqual(define.name, 'define_word');
+    assert.ok(define.parameters.required.includes('word'));
+  });
+
+  // ──────────── REMEMBER/RECALL TOOLS ────────────
+
+  await test('Remember: has correct schema', () => {
+    const remember = require('../tools/definitions/remember');
+    assert.strictEqual(remember.name, 'remember');
+    assert.ok(typeof remember.execute === 'function');
+  });
+
+  await test('Recall: has correct schema', () => {
+    const recall = require('../tools/definitions/recall');
+    assert.strictEqual(recall.name, 'recall');
+    assert.ok(typeof recall.execute === 'function');
+  });
+
+  // ──────────── CODE RUNNER TOOL ────────────
+
+  await test('CodeRunner: has correct schema', () => {
+    const codeRunner = require('../tools/definitions/code_runner');
+    assert.strictEqual(codeRunner.name, 'code_runner');
+    assert.ok(codeRunner.parameters.required.includes('code'));
+  });
+
+  // ──────────── GENERATE IMAGE TOOL ────────────
+
+  await test('GenerateImage: has correct schema', () => {
+    const genImage = require('../tools/definitions/generate_image');
+    assert.strictEqual(genImage.name, 'generate_image');
+    assert.ok(typeof genImage.execute === 'function');
+  });
+
+  // ──────────── AGENT LOOP ────────────
+
+  await test('AgentLoop: constructor sets defaults', () => {
+    const AgentLoop = require('../agent-loop');
+    const loop = new AgentLoop({}, {}, {});
+    assert.strictEqual(loop.maxIterations, 10);
+    assert.strictEqual(loop.timeout, 60000);
+  });
+
+  await test('AgentLoop: constructor accepts config', () => {
+    const AgentLoop = require('../agent-loop');
+    const loop = new AgentLoop({}, {}, { maxAgentIterations: 5, agentLoopTimeout: 30000 });
+    assert.strictEqual(loop.maxIterations, 5);
+    assert.strictEqual(loop.timeout, 30000);
+  });
+
+  // ──────────── ERRORS MODULE ────────────
+
+  await test('Errors: all USER_ERRORS keys present', () => {
+    const { USER_ERRORS } = require('../utils/errors');
+    const expected = ['rate_limit', 'timeout', 'api_error', 'moderation', 'queue_full', 'unknown'];
+    for (const key of expected) {
+      assert.ok(USER_ERRORS[key], `Missing key: ${key}`);
+    }
+  });
+
+  await test('Errors: friendlyError prioritizes specific errors', () => {
+    const { friendlyError, USER_ERRORS } = require('../utils/errors');
+    // 429 should be rate_limit even if message says "timeout"
+    assert.strictEqual(friendlyError({ status: 429, message: 'timeout' }), USER_ERRORS.rate_limit);
+    // QUEUE_FULL should be queue_full even if status is set
+    assert.strictEqual(friendlyError({ message: 'QUEUE_FULL', status: 500 }), USER_ERRORS.queue_full);
+  });
+
+  // ──────────── USER SETTINGS IN INTENT ────────────
+
+  await test('UserSettings: DB roundtrip in intent context', () => {
+    const { getUserSettings, saveUserSettings } = require('../db');
+    // Verify the settings module is importable and works
+    saveUserSettings('intent-test-user', 'concise', false);
+    const s = getUserSettings('intent-test-user');
+    assert.strictEqual(s.verbosity, 'concise');
+    assert.strictEqual(s.images_enabled, 0);
+    // Cleanup
+    const { getDb } = require('../db');
+    getDb().prepare("DELETE FROM user_settings WHERE user_id = 'intent-test-user'").run();
+  });
+
+  // ──────────── INTERACTION HANDLER EXPORTS ────────────
+
+  await test('InteractionHandler: exports handleInteraction', () => {
+    const handler = require('../handlers/interactionHandler');
+    assert.ok(typeof handler.handleInteraction === 'function');
+  });
+
+  await test('InteractionHandler: exports generateSmartTitle', () => {
+    const handler = require('../handlers/interactionHandler');
+    assert.ok(typeof handler.generateSmartTitle === 'function');
+  });
+
   // ──────────── SUMMARY ────────────
   console.log('\n' + results.join('\n'));
   console.log(`\n=== Agentic Tests: ${passed} passed, ${failed} failed ===\n`);

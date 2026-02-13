@@ -1,3 +1,9 @@
+/**
+ * @module openai-client
+ * @description OpenAI API client wrapper. Provides chat completion, image generation,
+ * structured thinking (JSON mode), and raw completion with tool calling support.
+ */
+
 const OpenAI = require('openai');
 const { searchWeb } = require('./tools/webSearch');
 const logger = require('./logger');

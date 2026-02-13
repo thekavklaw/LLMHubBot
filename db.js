@@ -93,6 +93,15 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_settings (
+    user_id TEXT PRIMARY KEY,
+    verbosity TEXT DEFAULT 'normal',
+    images_enabled BOOLEAN DEFAULT 1,
+    updated_at INTEGER
+  )
+`);
+
 // ── Indexes ──
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp)`);
@@ -299,6 +308,36 @@ function trimContext(channelId, keepCount = 100) {
   trimContextStmt.run(channelId, channelId, keepCount);
 }
 
+// ── User settings ──
+const getUserSettingsStmt = db.prepare('SELECT * FROM user_settings WHERE user_id = ?');
+const upsertUserSettingsStmt = db.prepare(`
+  INSERT INTO user_settings (user_id, verbosity, images_enabled, updated_at)
+  VALUES (?, ?, ?, ?)
+  ON CONFLICT(user_id) DO UPDATE SET
+    verbosity = excluded.verbosity,
+    images_enabled = excluded.images_enabled,
+    updated_at = excluded.updated_at
+`);
+
+/**
+ * Get user settings from SQLite.
+ * @param {string} userId - Discord user ID
+ * @returns {Object|null} User settings row or null
+ */
+function getUserSettings(userId) {
+  return getUserSettingsStmt.get(userId) || null;
+}
+
+/**
+ * Save user settings to SQLite.
+ * @param {string} userId - Discord user ID
+ * @param {string} verbosity - 'concise', 'normal', or 'detailed'
+ * @param {boolean} imagesEnabled - Whether image generation is enabled
+ */
+function saveUserSettings(userId, verbosity, imagesEnabled) {
+  upsertUserSettingsStmt.run(userId, verbosity, imagesEnabled ? 1 : 0, Date.now());
+}
+
 function getDb() { return db; }
 
 module.exports = {
@@ -310,4 +349,5 @@ module.exports = {
   logToolUsage, getToolStats,
   getDb,
   insertContext, loadContext, clearContext, updateContextByMsgId, deleteContextByMsgId, trimContext,
+  getUserSettings, saveUserSettings,
 };

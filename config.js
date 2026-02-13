@@ -1,3 +1,9 @@
+/**
+ * @module config
+ * @description Central configuration for the LLMHub bot. Reads from environment
+ * variables with sensible defaults. Exported as a frozen object.
+ */
+
 require('dotenv').config();
 
 const config = {

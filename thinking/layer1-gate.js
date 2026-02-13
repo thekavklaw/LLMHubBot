@@ -1,3 +1,9 @@
+/**
+ * @module thinking/layer1-gate
+ * @description Fast relevance gate that determines whether the bot should engage
+ * with a message. Uses heuristics first, falls back to LLM for ambiguous cases.
+ */
+
 const logger = require('../logger');
 const { thinkWithModel } = require('../openai-client');
 const { withRetry } = require('../utils/retry');
