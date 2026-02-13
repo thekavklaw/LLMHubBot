@@ -3,9 +3,10 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, ChannelType } = require('discord.js');
 const { getSystemPrompt, getSoulConfig } = require('./soul');
 const { generateResponse } = require('./openai-client');
-const { addMessage, getContext } = require('./context');
+const { addMessage, getContext, getRecentContextMessages } = require('./context');
 const { logMessage } = require('./db');
 const { createChatThread } = require('./threads');
+const { shouldRespond } = require('./relevance');
 
 const client = new Client({
   intents: [
@@ -39,6 +40,10 @@ function isGptChannel(channel) {
   return false;
 }
 
+function isGptThread(channel) {
+  return channel.isThread() && channel.parentId === GPT_CHANNEL_ID;
+}
+
 // ── Split long messages ──
 function splitMessage(text, maxLen = 2000) {
   if (text.length <= maxLen) return [text];
@@ -59,14 +64,28 @@ function splitMessage(text, maxLen = 2000) {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (!isGptChannel(message.channel)) return;
-  if (message.content.trim().length < 3) return;
 
   const channelId = message.channel.id;
   const userName = message.author.username;
 
-  // Log & add to context
+  // Log & add to context (always, even if we don't respond)
   addMessage(channelId, 'user', message.content, userName);
   logMessage(channelId, message.author.id, userName, 'user', message.content);
+
+  // Skip trivial messages before any processing
+  if (message.content.trim().length < 1) return;
+
+  // Threads under #gpt: ALWAYS respond
+  const alwaysRespond = isGptThread(message.channel);
+
+  if (!alwaysRespond && message.channel.id === GPT_CHANNEL_ID) {
+    // Smart relevance check for main #gpt channel
+    const recentMessages = getRecentContextMessages(channelId);
+    const decision = await shouldRespond(message, recentMessages, client.user.id);
+    console.log(`[Relevance] ${userName}: "${message.content.slice(0, 60)}" → respond=${decision.respond} (${decision.confidence}) — ${decision.reason}`);
+
+    if (!decision.respond) return; // Just logged context, don't reply
+  }
 
   // Build messages for OpenAI
   const config = getSoulConfig();
