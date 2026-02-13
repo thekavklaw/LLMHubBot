@@ -5,7 +5,7 @@
  */
 
 const logger = require('../logger');
-const { searchMemory } = require('../memory');
+const { hybridSearch } = require('../memory');
 const { getProfile, formatProfileForPrompt } = require('../users');
 const { getUserSettings } = require('../db');
 
@@ -117,7 +117,7 @@ async function analyzeIntent(message, context, gate) {
 
   // Gather context in parallel
   const [memories, profile] = await Promise.all([
-    searchMemory(content, 5, 0.65, context.guildId).catch(() => []),
+    hybridSearch(content, 5, 0.55, context.guildId).catch(() => []),
     Promise.resolve(getProfile(userId)).catch(() => null),
   ]);
 

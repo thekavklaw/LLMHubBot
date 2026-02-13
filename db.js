@@ -124,7 +124,31 @@ try {
   logger.info('DB', 'Added guild_id column to memories table');
 } catch (_) {} // Column already exists
 
+// Phase 2 migrations: tier, significance, consolidated columns
+try { db.exec(`ALTER TABLE memories ADD COLUMN tier TEXT DEFAULT 'observation'`); logger.info('DB', 'Added tier column'); } catch (_) {}
+try { db.exec(`ALTER TABLE memories ADD COLUMN significance REAL DEFAULT 0.5`); logger.info('DB', 'Added significance column'); } catch (_) {}
+try { db.exec(`ALTER TABLE memories ADD COLUMN consolidated INTEGER DEFAULT 0`); logger.info('DB', 'Added consolidated column'); } catch (_) {}
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_tier ON memories(tier)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_guild ON memories(guild_id)`);
+
+// FTS5 virtual table for hybrid search
+db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(content, category, user_name, guild_id, content_rowid=rowid)`);
+
+// Populate FTS5 from existing memories (idempotent — only inserts missing rows)
+try {
+  const ftsCount = db.prepare('SELECT COUNT(*) as cnt FROM memory_fts').get().cnt;
+  const memCount = db.prepare('SELECT COUNT(*) as cnt FROM memories').get().cnt;
+  if (ftsCount < memCount) {
+    const missing = db.prepare(`SELECT id, content, category, user_name, guild_id FROM memories WHERE id NOT IN (SELECT rowid FROM memory_fts)`).all();
+    const insertFts = db.prepare('INSERT INTO memory_fts(rowid, content, category, user_name, guild_id) VALUES (?, ?, ?, ?, ?)');
+    const batch = db.transaction((rows) => { for (const r of rows) insertFts.run(r.id, r.content, r.category, r.user_name, r.guild_id); });
+    batch(missing);
+    logger.info('DB', `Synced ${missing.length} memories to FTS5`);
+  }
+} catch (err) { logger.error('DB', 'FTS5 sync error:', err.message); }
+
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_channel ON memories(channel_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON user_profiles(last_seen)`);
@@ -241,8 +265,45 @@ function getLatestSummary(channelId) {
   return row ? row.summary : null;
 }
 
-function insertMemory(content, embedding, userId, userName, channelId, category, metadata, guildId) {
-  insertMemoryStmt.run(content, embedding, userId, userName, channelId, category, metadata, guildId || null);
+const insertFtsStmt = db.prepare('INSERT INTO memory_fts(rowid, content, category, user_name, guild_id) VALUES (?, ?, ?, ?, ?)');
+const searchFtsStmt = db.prepare(`SELECT rowid, rank, content, category, user_name, guild_id FROM memory_fts WHERE memory_fts MATCH ? ORDER BY rank LIMIT ?`);
+const getMemoriesByUserStmt = db.prepare(`SELECT id, content, category, timestamp, significance, tier, consolidated FROM memories WHERE user_id = ? ORDER BY timestamp DESC`);
+const markConsolidatedStmt = db.prepare(`UPDATE memories SET consolidated = 1 WHERE id = ?`);
+const countUserMemoriesStmt = db.prepare(`SELECT COUNT(*) as cnt FROM memories WHERE user_id = ? AND consolidated = 0`);
+
+function insertMemory(content, embedding, userId, userName, channelId, category, metadata, guildId, tier, significance) {
+  const info = db.prepare(
+    'INSERT INTO memories (content, embedding, user_id, user_name, channel_id, category, metadata, guild_id, tier, significance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(content, embedding, userId, userName, channelId, category, metadata, guildId || null, tier || 'observation', significance ?? 0.5);
+  // Sync to FTS5
+  try { insertFtsStmt.run(info.lastInsertRowid, content, category, userName, guildId || null); } catch (_) {}
+  return info.lastInsertRowid;
+}
+
+function searchFts(query, limit = 10) {
+  try {
+    // Sanitize: remove FTS5 special chars
+    const sanitized = query.replace(/['"*(){}[\]:^~!@#$%&\\]/g, ' ').trim();
+    if (!sanitized) return [];
+    // Wrap words in quotes for safe matching
+    const terms = sanitized.split(/\s+/).filter(Boolean).map(t => `"${t}"`).join(' ');
+    return searchFtsStmt.all(terms, limit);
+  } catch (err) {
+    logger.error('DB', 'FTS5 search error:', err.message);
+    return [];
+  }
+}
+
+function getMemoriesByUser(userId) {
+  return getMemoriesByUserStmt.all(userId);
+}
+
+function markMemoryConsolidated(memoryId) {
+  markConsolidatedStmt.run(memoryId);
+}
+
+function countUserUnconsolidatedMemories(userId) {
+  return countUserMemoriesStmt.get(userId).cnt;
 }
 
 function getAllMemories() {
@@ -390,7 +451,7 @@ module.exports = {
   close,
   logMessage, getRecentMessages,
   saveSummary, getLatestSummary,
-  insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories,
+  insertMemory, getAllMemories, getRecentMemories, getMemoryCount, pruneOldMemories, searchFts, getMemoriesByUser, markMemoryConsolidated, countUserUnconsolidatedMemories,
   upsertUserProfile, getUserProfile, updateUserNotes, updateUserPreferences, updateUserTopics,
   getState, setState,
   logToolUsage, getToolStats,

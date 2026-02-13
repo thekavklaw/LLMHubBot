@@ -261,6 +261,16 @@ client.once('ready', () => {
   logger.info('Bot', `Logged in as ${client.user.tag}`);
   logger.info('Bot', 'Production hardened: concurrency limiting, queue, WAL mode, embeds');
   sendStartupEmbed();
+
+  // Phase 2: Run startup memory consolidation (async, non-blocking)
+  setImmediate(async () => {
+    try {
+      const { consolidateAllUsers } = require('./memory-consolidation');
+      await consolidateAllUsers();
+    } catch (err) {
+      logger.error('Bot', 'Startup consolidation error:', err.message);
+    }
+  });
 });
 
 registerCommands();

@@ -8,6 +8,8 @@ const logger = require('../logger');
 const { getSystemPrompt } = require('../soul');
 const { getContext } = require('../context');
 const { getUserSettings } = require('../db');
+const { hybridSearch } = require('../memory');
+const { formatProfileForPrompt } = require('../users');
 
 /**
  * Get dynamic model parameters based on intent type.
@@ -75,6 +77,19 @@ async function execute(message, context, intent) {
   }
   if (intent.keyContext) {
     promptParts.push(`\n## Key Context\n${intent.keyContext}`);
+  }
+
+  // Pre-response memory boost: targeted search for this user + topic
+  try {
+    const boostQuery = `${userName} ${typeof message.content === 'string' ? message.content.slice(0, 100) : ''}`;
+    const boostMemories = await hybridSearch(boostQuery, 3, 0.6, context.guildId);
+    if (boostMemories.length > 0) {
+      const memoryLines = boostMemories.map(m => `- ${m.content}`).join('\n');
+      promptParts.push(`\n## Relevant Memories About This User\n${memoryLines}`);
+      logger.debug('Execute', `Memory boost: injected ${boostMemories.length} memories`);
+    }
+  } catch (err) {
+    logger.debug('Execute', `Memory boost failed (non-critical): ${err.message}`);
   }
 
   // Wire user verbosity preference

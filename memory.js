@@ -5,7 +5,8 @@
  */
 
 const OpenAI = require('openai');
-const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories } = require('./db');
+const { insertMemory, getRecentMemories, getMemoryCount, pruneOldMemories: dbPruneOldMemories, searchFts, countUserUnconsolidatedMemories } = require('./db');
+const { appendDailyMemory, appendUserMemory } = require('./memory-files');
 const logger = require('./logger');
 const config = require('./config');
 const { withRetry } = require('./utils/retry');
@@ -124,6 +125,16 @@ async function isDuplicate(embedding, threshold = 0.95) {
 
 async function storeMemory(content, meta = {}) {
   try {
+    const significance = meta.significance ?? 0.5;
+    const minSigThreshold = config.memoryMinSignificance ?? 0.5;
+    const mdThreshold = config.memoryMdSignificance ?? 0.8;
+
+    // Significance filter: skip trivial memories
+    if (significance < minSigThreshold) {
+      logger.debug('Memory', `Skipped low-significance (${significance.toFixed(2)}): "${content.slice(0, 60)}..."`);
+      return;
+    }
+
     // Prune if over limit (10k cap)
     const count = getMemoryCount();
     const maxMemories = config.memoryMaxRows || 10000;
@@ -141,15 +152,41 @@ async function storeMemory(content, meta = {}) {
       return;
     }
 
+    const tier = significance >= mdThreshold ? 'curated' : 'observation';
     const embeddingBuf = float32ToBuffer(embedding);
-    insertMemory(
+    const rowId = insertMemory(
       content, embeddingBuf,
       meta.userId || null, meta.userName || null,
       meta.channelId || null, meta.category || 'fact',
       meta.metadata ? JSON.stringify(meta.metadata) : null,
-      meta.guildId || null
+      meta.guildId || null,
+      tier, significance
     );
-    logger.debug('Memory', `Stored: "${content.slice(0, 60)}..." [${meta.category || 'fact'}]`);
+
+    // Write to Markdown files for high-significance memories
+    if (significance >= mdThreshold) {
+      appendDailyMemory(content, meta.category || 'fact');
+      if (meta.userId && meta.userName) {
+        appendUserMemory(meta.userId, meta.userName, content);
+      }
+    }
+
+    logger.debug('Memory', `Stored: "${content.slice(0, 60)}..." [${meta.category || 'fact'}] tier=${tier} sig=${significance.toFixed(2)}`);
+
+    // Check if consolidation needed for this user
+    if (meta.userId) {
+      const unconsolidated = countUserUnconsolidatedMemories(meta.userId);
+      if (unconsolidated > 0 && unconsolidated % 10 === 0 && unconsolidated >= 15) {
+        // Trigger consolidation asynchronously
+        setImmediate(() => {
+          try {
+            const { consolidateUserMemories } = require('./memory-consolidation');
+            consolidateUserMemories(meta.userId, meta.userName).catch(err =>
+              logger.error('Memory', 'Auto-consolidation error:', err.message));
+          } catch (_) {}
+        });
+      }
+    }
   } catch (err) {
     logger.error('Memory', 'Store error:', err);
   }
@@ -193,6 +230,66 @@ async function searchMemory(query, limit = 5, minSimilarity = 0.65, guildId = nu
   } catch (err) {
     logger.error('Memory', 'Search error:', err);
     return [];
+  }
+}
+
+/**
+ * Hybrid search: combines vector cosine similarity with FTS5 keyword matching.
+ * 70% vector score + 30% FTS5 rank (normalized).
+ */
+async function hybridSearch(query, limit = 5, minSimilarity = 0.55, guildId = null) {
+  try {
+    // Run both searches in parallel
+    const [vectorResults, ftsResults] = await Promise.all([
+      searchMemory(query, limit * 2, minSimilarity, guildId),
+      Promise.resolve(searchFts(query, limit * 2)),
+    ]);
+
+    // Build a map keyed by content
+    const merged = new Map();
+
+    // Add vector results
+    for (const r of vectorResults) {
+      merged.set(r.content, {
+        ...r,
+        vectorScore: r.decayedScore || r.similarity,
+        ftsScore: 0,
+      });
+    }
+
+    // Normalize FTS5 ranks (they're negative, lower = better)
+    const ftsMin = ftsResults.length > 0 ? Math.min(...ftsResults.map(r => r.rank)) : 0;
+    const ftsMax = ftsResults.length > 0 ? Math.max(...ftsResults.map(r => r.rank)) : 0;
+    const ftsRange = ftsMax - ftsMin || 1;
+
+    for (const r of ftsResults) {
+      const normalizedFts = 1 - ((r.rank - ftsMin) / ftsRange); // 0-1, higher = better
+      if (merged.has(r.content)) {
+        merged.get(r.content).ftsScore = normalizedFts;
+      } else {
+        merged.set(r.content, {
+          content: r.content,
+          category: r.category,
+          userName: r.user_name,
+          similarity: 0.5, // default for FTS-only results
+          vectorScore: 0,
+          ftsScore: normalizedFts,
+        });
+      }
+    }
+
+    // Compute final scores and sort
+    const results = [...merged.values()].map(r => ({
+      ...r,
+      finalScore: 0.7 * (r.vectorScore || 0) + 0.3 * (r.ftsScore || 0),
+    }));
+
+    results.sort((a, b) => b.finalScore - a.finalScore);
+    return results.slice(0, limit);
+  } catch (err) {
+    logger.error('Memory', 'Hybrid search error:', err);
+    // Fallback to vector-only
+    return searchMemory(query, limit, minSimilarity, guildId);
   }
 }
 
@@ -241,4 +338,4 @@ Return ONLY a valid JSON array, nothing else.`
   }
 }
 
-module.exports = { storeMemory, searchMemory, extractFacts, getEmbedding, LRUCache, pruneByAge, isDuplicate, cosineSimilarity, float32ToBuffer, bufferToFloat32 };
+module.exports = { storeMemory, searchMemory, hybridSearch, extractFacts, getEmbedding, LRUCache, pruneByAge, isDuplicate, cosineSimilarity, float32ToBuffer, bufferToFloat32 };
