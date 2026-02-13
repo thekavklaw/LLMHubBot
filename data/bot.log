@@ -5,3 +5,23 @@
 [2026-02-13 05:17:55] [INFO] [Bot] Slash commands registered
 [2026-02-13 05:17:56] [INFO] [Bot] Logged in as LLMHub#1178
 [2026-02-13 05:17:56] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 05:19:20] [INFO] [RateLimit] User rl-block-1770959960123 hit limit in rl-blkch-1770959960123, cooldown 60s
+[2026-02-13 05:19:20] [INFO] [RateLimit] User rl-thread-1770959960124 hit limit in rl-thrch-1770959960124, cooldown 60s
+[2026-02-13 05:19:42] [INFO] [RateLimit] User rl-block-1770959982875 hit limit in rl-blkch-1770959982875, cooldown 60s
+[2026-02-13 05:19:42] [INFO] [RateLimit] User rl-thread-1770959982876 hit limit in rl-thrch-1770959982876, cooldown 60s
+[2026-02-13 05:19:54] [INFO] [Bot] Slash commands registered
+[2026-02-13 05:19:54] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 05:19:54] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds
+[2026-02-13 05:20:43] [INFO] [RateLimit] User rl-block-1770960043009 hit limit in rl-blkch-1770960043009, cooldown 60s
+[2026-02-13 05:20:43] [INFO] [RateLimit] User rl-thread-1770960043010 hit limit in rl-thrch-1770960043010, cooldown 60s
+[2026-02-13 05:20:43] [INFO] [QA] test log entry
+[2026-02-13 05:21:05] [INFO] [RateLimit] User rl-block-1770960065828 hit limit in rl-blkch-1770960065828, cooldown 60s
+[2026-02-13 05:21:05] [INFO] [RateLimit] User rl-thread-1770960065828 hit limit in rl-thrch-1770960065828, cooldown 60s
+[2026-02-13 05:21:05] [INFO] [QA] test log entry
+[2026-02-13 05:21:15] [INFO] [RateLimit] User rl-block-1770960075636 hit limit in rl-blkch-1770960075636, cooldown 60s
+[2026-02-13 05:21:15] [INFO] [RateLimit] User rl-thread-1770960075639 hit limit in rl-thrch-1770960075639, cooldown 60s
+[2026-02-13 05:21:15] [INFO] [QA] test log entry
+[2026-02-13 05:32:52] [INFO] [Bot] Received SIGTERM, shutting down...
+[2026-02-13 05:32:53] [INFO] [Bot] Slash commands registered
+[2026-02-13 05:32:54] [INFO] [Bot] Logged in as LLMHub#1178
+[2026-02-13 05:32:54] [INFO] [Bot] Production hardened: concurrency limiting, queue, WAL mode, embeds

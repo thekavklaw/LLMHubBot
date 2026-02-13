@@ -11,7 +11,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 async function generateResponse(messages, config = {}) {
   try {
     const completion = await openai.chat.completions.create({
-      model: config.model || 'gpt-4o',
+      model: config.model || 'gpt-5.2',
       messages,
       temperature: config.temperature ?? 0.8,
       max_tokens: config.maxTokens || 1000,

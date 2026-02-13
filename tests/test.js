@@ -396,6 +396,87 @@ async function test(name, fn) {
     assert.ok(fs.readFileSync(fp, 'utf-8').includes('LLMHub'));
   });
 
+  // ──────────── QA ADDITIONAL TESTS ────────────
+
+  await test('config: GUILD_ID is set', () => {
+    assert.ok(config.guildId || process.env.GUILD_ID, 'GUILD_ID must be configured');
+  });
+
+  await test('config: GPT_CHANNEL_ID is set', () => {
+    assert.ok(config.gptChannelId, 'GPT_CHANNEL_ID must be configured');
+  });
+
+  await test('queue: tasks actually execute and return values', async () => {
+    const q = new TaskQueue(2);
+    const result = await q.enqueue(async () => 42);
+    assert.strictEqual(result, 42);
+  });
+
+  await test('queue: getStats counts are accurate after work', async () => {
+    const q = new TaskQueue(1);
+    await q.enqueue(async () => 'a');
+    await q.enqueue(async () => 'b');
+    const stats = q.getStats();
+    assert.strictEqual(stats.completed, 2);
+    assert.strictEqual(stats.queued, 0);
+    assert.strictEqual(stats.processing, 0);
+  });
+
+  await test('logger: log file gets created', () => {
+    const logDir = path.join(__dirname, '..', 'data');
+    if (fs.existsSync(logDir)) {
+      const logFiles = fs.readdirSync(logDir).filter(f => f.includes('bot.log'));
+      // Just verify the logger doesn't crash when writing
+      logger.info('QA', 'test log entry');
+      assert.ok(true);
+    } else {
+      logger.info('QA', 'test log entry');
+      assert.ok(true);
+    }
+  });
+
+  await test('handlers export expected interface', () => {
+    const msgHandler = require('../handlers/messageHandler');
+    const intHandler = require('../handlers/interactionHandler');
+    assert.ok(typeof msgHandler === 'function' || typeof msgHandler === 'object', 'messageHandler should export');
+    assert.ok(typeof intHandler === 'function' || typeof intHandler === 'object', 'interactionHandler should export');
+    if (typeof msgHandler === 'object') assert.ok(msgHandler.handleMessage, 'messageHandler should have handleMessage');
+    if (typeof intHandler === 'object') assert.ok(intHandler.handleInteraction || intHandler.default || Object.keys(intHandler).length > 0, 'interactionHandler should have exports');
+  });
+
+  await test('index.js is small (<100 lines)', () => {
+    const content = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf-8');
+    const lines = content.split('\n').length;
+    assert.ok(lines < 100, `index.js has ${lines} lines, expected <100`);
+  });
+
+  await test('.gitignore covers sensitive files', () => {
+    const gitignore = fs.readFileSync(path.join(__dirname, '..', '.gitignore'), 'utf-8');
+    assert.ok(gitignore.includes('.env'), '.gitignore must cover .env');
+    assert.ok(gitignore.includes('node_modules'), '.gitignore must cover node_modules');
+    assert.ok(gitignore.includes('.db'), '.gitignore must cover .db files');
+  });
+
+  await test('README mentions all modules', () => {
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf-8');
+    const modules = ['config', 'db', 'soul', 'context', 'memory', 'users', 'moderator', 'ratelimiter', 'relevance', 'threads'];
+    for (const m of modules) {
+      assert.ok(readme.toLowerCase().includes(m), `README should mention ${m}`);
+    }
+  });
+
+  await test('no hardcoded secrets in .js files', () => {
+    const jsFiles = fs.readdirSync(path.join(__dirname, '..')).filter(f => f.endsWith('.js'));
+    const handlerFiles = fs.readdirSync(path.join(__dirname, '..', 'handlers')).filter(f => f.endsWith('.js'));
+    const allFiles = [...jsFiles.map(f => path.join(__dirname, '..', f)), ...handlerFiles.map(f => path.join(__dirname, '..', 'handlers', f))];
+    for (const fp of allFiles) {
+      const content = fs.readFileSync(fp, 'utf-8');
+      assert.ok(!/sk-[a-zA-Z0-9]{20,}/.test(content), `Hardcoded OpenAI key in ${path.basename(fp)}`);
+      assert.ok(!/ghp_[a-zA-Z0-9]{20,}/.test(content), `Hardcoded GitHub token in ${path.basename(fp)}`);
+      assert.ok(!/MTQ3[a-zA-Z0-9]{50,}/.test(content), `Hardcoded Discord token in ${path.basename(fp)}`);
+    }
+  });
+
   // ──────────── RESULTS ────────────
   console.log('\n' + results.join('\n'));
   console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);

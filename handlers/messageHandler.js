@@ -60,7 +60,6 @@ function errorEmbed(description) {
   return new EmbedBuilder()
     .setColor(0xED4245)
     .setDescription(`❌ ${description}`)
-    .setFooter({ text: 'LLMHub' })
     .setTimestamp();
 }
 
@@ -109,7 +108,6 @@ async function handleMessage(message) {
           new EmbedBuilder()
             .setColor(0xFEE75C)
             .setDescription(`⏳ Slow down! Try again in ${rateResult.retryAfter}s.`)
-            .setFooter({ text: 'LLMHub • Rate Limited' })
         ]});
       } catch (_) {}
       return;

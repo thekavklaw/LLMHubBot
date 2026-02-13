@@ -9,7 +9,7 @@ const config = {
 
   // OpenAI
   openaiApiKey: process.env.OPENAI_API_KEY,
-  model: process.env.MODEL || 'gpt-4o',
+  model: process.env.MODEL || 'gpt-5.2',
   miniModel: process.env.MINI_MODEL || 'gpt-4o-mini',
   temperature: parseFloat(process.env.TEMPERATURE || '0.8'),
   maxTokens: parseInt(process.env.MAX_TOKENS || '1000', 10),

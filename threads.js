@@ -20,11 +20,10 @@ async function createChatThread(interaction) {
     .setTitle('💬 New Conversation')
     .setDescription(`Hey ${interaction.member?.displayName || interaction.user.username}! I'm **LLMHub** — your AI assistant.\n\nAsk me anything about AI, LLMs, machine learning, or tech. Others can join this thread too!`)
     .addFields(
-      { name: '🧠 Model', value: 'GPT-4o', inline: true },
+      { name: '🧠 Model', value: 'GPT-5.2', inline: true },
       { name: '💾 Memory', value: 'Enabled', inline: true },
       { name: '🛡️ Moderation', value: 'Active', inline: true }
     )
-    .setFooter({ text: 'LLMHub • Powered by OpenAI' })
     .setTimestamp();
 
   await thread.send({ embeds: [embed] });

@@ -13,7 +13,6 @@ async function handleInteraction(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0x57F287)
       .setDescription(`✅ Thread created! Head over to ${thread}`)
-      .setFooter({ text: 'LLMHub' });
 
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
